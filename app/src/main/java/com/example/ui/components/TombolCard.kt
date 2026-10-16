@@ -77,16 +77,10 @@ fun TombolCard(
     Card(
         shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(
-            containerColor = if (isActive) Color(0xFFE6FFFA)
-            else MaterialTheme.colorScheme.surface
+            containerColor = MaterialTheme.colorScheme.surface
         ),
-        border = if (isActive) {
-            BorderStroke(4.dp, Color(0xFF14B8A6))
-        } else {
-            BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
-        },
         elevation = CardDefaults.cardElevation(
-            defaultElevation = if (isActive) 8.dp else 2.dp,
+            defaultElevation = if (isActive) 6.dp else 2.dp,
             pressedElevation = 8.dp
         ),
         modifier = modifier
@@ -94,6 +88,15 @@ fun TombolCard(
             .aspectRatio(0.85f)
             .testTag("tombol_card_${tombol.id}")
             .clip(RoundedCornerShape(20.dp))
+            .drawBehind {
+                if (isActive) {
+                    drawRoundRect(
+                        color = Color(0xFF00FF66), // Hijau stabilo (Neon lime)
+                        style = Stroke(width = 4.dp.toPx()),
+                        cornerRadius = CornerRadius(20.dp.toPx(), 20.dp.toPx())
+                    )
+                }
+            }
             .combinedClickable(
                 onClick = onClick,
                 onLongClick = onLongClick

@@ -87,7 +87,7 @@ fun CardMenuDialog(
 
                 MenuItemRow(
                     icon = Icons.Default.Refresh,
-                    label = "Reset Data Tombol",
+                    label = "Bersihkan Cache",
                     tint = MaterialTheme.colorScheme.onSurface,
                     testTag = "menu_reset",
                     onClick = {
@@ -110,7 +110,7 @@ fun CardMenuDialog(
                 if (isActive) {
                     MenuItemRow(
                         icon = Icons.Default.Close,
-                        label = "Tutup Sesi Latar Belakang",
+                        label = "Akhiri Sesi",
                         tint = Color(0xFFEF4444),
                         testTag = "menu_tutup_sesi",
                         onClick = {
