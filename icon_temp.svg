@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#14B8A6" />
+      <stop offset="100%" stop-color="#0F766E" />
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" fill="#0F766E" />
+  <!-- Rounded squircle -->
+  <rect x="64" y="64" width="384" height="384" rx="88" ry="88" fill="url(#grad)" stroke="rgba(255,255,255,0.2)" stroke-width="4" />
+  <!-- Bold G -->
+  <path fill="#FFFFFF" d="M310,215 L275,225 C265,200 245,190 220,190 C175,190 145,225 145,268 C145,312 175,346 220,346 C255,346 275,325 280,295 L220,295 L220,255 L325,255 L325,315 C305,355 270,382 220,382 C150,382 100,332 100,268 C100,205 150,154 220,154 C268,154 300,180 310,215 Z" />
+  <!-- 4-pointed Star -->
+  <path fill="#FFFFFF" d="M350,110 C352,135 365,148 390,150 C365,152 352,165 350,190 C348,165 335,152 310,150 C335,148 348,135 350,110 Z" />
+</svg>
