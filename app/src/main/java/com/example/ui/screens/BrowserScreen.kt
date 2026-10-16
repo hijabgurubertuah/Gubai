@@ -38,7 +38,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
@@ -66,8 +65,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
@@ -84,7 +81,7 @@ import com.example.browser.KioskWebChromeClient
 import com.example.browser.KioskWebViewClient
 import com.example.browser.WebViewSessionManager
 import com.example.data.model.Tombol
-import com.example.ui.components.KioskFloatingMenu
+import com.example.ui.components.BrowserTopBar
 
 @SuppressLint("SetJavaScriptEnabled")
 @Composable
@@ -323,194 +320,14 @@ fun BrowserScreen(
         }
     }
 
-    Box(
+    // Layout utama: Kolom dengan BrowserTopBar di atas, WebView di tengah, dan bar kosong di bawah
+    Column(
         modifier = modifier
             .fillMaxSize()
-            .background(Color.Black)
+            .background(Color(0xFF042F2E))
     ) {
-        // Main Persistent WebView
-        AndroidView(
-            factory = { _ ->
-                (session.webView.parent as? ViewGroup)?.removeView(session.webView)
-                session.webView
-            },
-            update = { _ -> },
-            modifier = Modifier.fillMaxSize()
-        )
-
-        // Custom Fullscreen Video Container
-        customVideoView?.let { videoView ->
-            AndroidView(
-                factory = { ctx ->
-                    FrameLayout(ctx).apply {
-                        layoutParams = ViewGroup.LayoutParams(
-                            ViewGroup.LayoutParams.MATCH_PARENT,
-                            ViewGroup.LayoutParams.MATCH_PARENT
-                        )
-                        (videoView.parent as? ViewGroup)?.removeView(videoView)
-                        addView(videoView)
-                    }
-                },
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(Color.Black)
-            )
-        }
-
-        // Popup Window Floating Container (for window.open, OAuth, Payments, 2FA)
-        popupWebView?.let { popupView ->
-            Box(
-                contentAlignment = Alignment.Center,
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(Color.Black.copy(alpha = 0.5f))
-                    .padding(16.dp)
-            ) {
-                Card(
-                    shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 16.dp),
-                    modifier = Modifier.fillMaxSize()
-                ) {
-                    Column(modifier = Modifier.fillMaxSize()) {
-                        // Popup Header Bar with Close Button
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .background(MaterialTheme.colorScheme.primaryContainer)
-                                .padding(horizontal = 12.dp, vertical = 6.dp)
-                        ) {
-                            Text(
-                                text = "Jendela Baru",
-                                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
-                                color = MaterialTheme.colorScheme.onPrimaryContainer
-                            )
-                            IconButton(
-                                onClick = {
-                                    (popupView.parent as? ViewGroup)?.removeView(popupView)
-                                    popupView.destroy()
-                                    popupWebView = null
-                                },
-                                modifier = Modifier.size(32.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Close,
-                                    contentDescription = "Tutup",
-                                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                                    modifier = Modifier.size(20.dp)
-                                )
-                            }
-                        }
-
-                        // Popup content WebView
-                        AndroidView(
-                            factory = { _ ->
-                                (popupView.parent as? ViewGroup)?.removeView(popupView)
-                                popupView
-                            },
-                            modifier = Modifier.fillMaxSize()
-                        )
-                    }
-                }
-            }
-        }
-
-        // Thin loading progress bar at the top
-        AnimatedVisibility(
-            visible = isLoading && !hasError,
-            enter = fadeIn(),
-            exit = fadeOut(),
-            modifier = Modifier.align(Alignment.TopCenter)
-        ) {
-            LinearProgressIndicator(
-                progress = { currentProgress / 100f },
-                color = MaterialTheme.colorScheme.primary,
-                trackColor = Color.Transparent,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(3.dp)
-            )
-        }
-
-        // Error Screen: "Halaman tidak dapat dimuat"
-        if (hasError) {
-            Box(
-                contentAlignment = Alignment.Center,
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(MaterialTheme.colorScheme.background)
-                    .padding(24.dp)
-            ) {
-                Card(
-                    shape = RoundedCornerShape(24.dp),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
-                    modifier = Modifier.fillMaxWidth(0.9f)
-                ) {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(24.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Warning,
-                            contentDescription = "Galat",
-                            tint = MaterialTheme.colorScheme.error,
-                            modifier = Modifier.size(56.dp)
-                        )
-
-                        Spacer(modifier = Modifier.height(16.dp))
-
-                        Text(
-                            text = "Halaman tidak dapat dimuat",
-                            style = MaterialTheme.typography.titleMedium.copy(
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 18.sp
-                            ),
-                            color = MaterialTheme.colorScheme.onSurface,
-                            textAlign = TextAlign.Center
-                        )
-
-                        Spacer(modifier = Modifier.height(24.dp))
-
-                        Row(
-                            horizontalArrangement = Arrangement.Center,
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            OutlinedButton(
-                                onClick = onBackToHome,
-                                shape = RoundedCornerShape(12.dp),
-                                contentPadding = PaddingValues(horizontal = 20.dp, vertical = 10.dp)
-                            ) {
-                                Text("Beranda")
-                            }
-
-                            Spacer(modifier = Modifier.width(12.dp))
-
-                            Button(
-                                onClick = {
-                                    hasError = false
-                                    session.webView.reload()
-                                },
-                                shape = RoundedCornerShape(12.dp),
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = MaterialTheme.colorScheme.primary
-                                ),
-                                contentPadding = PaddingValues(horizontal = 20.dp, vertical = 10.dp)
-                            ) {
-                                Text("Coba Lagi")
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        // New Floating Menu Handle and Action Buttons (Left Edge, vertically centered)
-        KioskFloatingMenu(
+        // 1. BrowserTopBar di bagian paling atas
+        BrowserTopBar(
             onUndo = {
                 if (session.webView.canGoBack()) {
                     hasError = false
@@ -543,6 +360,207 @@ fun BrowserScreen(
                 session.webView.loadUrl(newUrl)
             }
         )
+
+        // 2. Area WebView di tengah (diapit oleh top bar dan bottom empty bar)
+        Box(
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxWidth()
+                .background(Color.Black)
+        ) {
+            // Main Persistent WebView
+            AndroidView(
+                factory = { _ ->
+                    (session.webView.parent as? ViewGroup)?.removeView(session.webView)
+                    session.webView
+                },
+                update = { _ -> },
+                modifier = Modifier.fillMaxSize()
+            )
+
+            // Custom Fullscreen Video Container
+            customVideoView?.let { videoView ->
+                AndroidView(
+                    factory = { ctx ->
+                        FrameLayout(ctx).apply {
+                            layoutParams = ViewGroup.LayoutParams(
+                                ViewGroup.LayoutParams.MATCH_PARENT,
+                                ViewGroup.LayoutParams.MATCH_PARENT
+                            )
+                            (videoView.parent as? ViewGroup)?.removeView(videoView)
+                            addView(videoView)
+                        }
+                    },
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Color.Black)
+                )
+            }
+
+            // Popup Window Floating Container (for window.open, OAuth, Payments, 2FA)
+            popupWebView?.let { popupView ->
+                Box(
+                    contentAlignment = Alignment.Center,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Color.Black.copy(alpha = 0.5f))
+                        .padding(16.dp)
+                ) {
+                    Card(
+                        shape = RoundedCornerShape(16.dp),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 16.dp),
+                        modifier = Modifier.fillMaxSize()
+                    ) {
+                        Column(modifier = Modifier.fillMaxSize()) {
+                            // Popup Header Bar with Close Button
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .background(MaterialTheme.colorScheme.primaryContainer)
+                                    .padding(horizontal = 12.dp, vertical = 6.dp)
+                            ) {
+                                Text(
+                                    text = "Jendela Baru",
+                                    style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                                )
+                                IconButton(
+                                    onClick = {
+                                        (popupView.parent as? ViewGroup)?.removeView(popupView)
+                                        popupView.destroy()
+                                        popupWebView = null
+                                    },
+                                    modifier = Modifier.size(32.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Close,
+                                        contentDescription = "Tutup",
+                                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                }
+                            }
+
+                            // Popup content WebView
+                            AndroidView(
+                                factory = { _ ->
+                                    (popupView.parent as? ViewGroup)?.removeView(popupView)
+                                    popupView
+                                },
+                                modifier = Modifier.fillMaxSize()
+                            )
+                        }
+                    }
+                }
+            }
+
+            // Thin loading progress bar at the top
+            if (isLoading && !hasError) {
+                LinearProgressIndicator(
+                    progress = { currentProgress / 100f },
+                    color = MaterialTheme.colorScheme.primary,
+                    trackColor = Color.Transparent,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(3.dp)
+                        .align(Alignment.TopCenter)
+                )
+            }
+
+            // Error Screen: "Halaman tidak dapat dimuat"
+            if (hasError) {
+                Box(
+                    contentAlignment = Alignment.Center,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(MaterialTheme.colorScheme.background)
+                        .padding(24.dp)
+                ) {
+                    Card(
+                        shape = RoundedCornerShape(24.dp),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
+                        modifier = Modifier.fillMaxWidth(0.9f)
+                    ) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(24.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Warning,
+                                contentDescription = "Galat",
+                                tint = MaterialTheme.colorScheme.error,
+                                modifier = Modifier.size(56.dp)
+                            )
+
+                            Spacer(modifier = Modifier.height(16.dp))
+
+                            Text(
+                                text = "Halaman tidak dapat dimuat",
+                                style = MaterialTheme.typography.titleMedium.copy(
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 18.sp
+                                ),
+                                color = MaterialTheme.colorScheme.onSurface,
+                                textAlign = TextAlign.Center
+                            )
+
+                            Spacer(modifier = Modifier.height(24.dp))
+
+                            Row(
+                                horizontalArrangement = Arrangement.Center,
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                OutlinedButton(
+                                    onClick = onBackToHome,
+                                    shape = RoundedCornerShape(12.dp),
+                                    contentPadding = PaddingValues(horizontal = 20.dp, vertical = 10.dp)
+                                ) {
+                                    Text("Beranda")
+                                }
+
+                                Spacer(modifier = Modifier.width(12.dp))
+
+                                Button(
+                                    onClick = {
+                                        hasError = false
+                                        session.webView.reload()
+                                    },
+                                    shape = RoundedCornerShape(12.dp),
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = MaterialTheme.colorScheme.primary
+                                    ),
+                                    contentPadding = PaddingValues(horizontal = 20.dp, vertical = 10.dp)
+                                ) {
+                                    Text("Coba Lagi")
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // 3. Bar kosong di bagian bawah (setinggi bar navigasi bawah HP) bertuliskan By : Guber Smart dengan warna hijau gelap
+        Box(
+            contentAlignment = Alignment.Center,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(48.dp)
+                .background(Color(0xFF042F2E))
+        ) {
+            Text(
+                text = "By : Guber Smart",
+                color = Color.White.copy(alpha = 0.5f),
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Medium
+            )
+        }
     }
 
     // JavaScript Alert Dialog
@@ -681,7 +699,6 @@ fun BrowserScreen(
     }
 
     // SSL Certificate Error Dialog
-    // Required: peringatan sertifikat bermasalah tampil dengan pilihan "Kembali" (bawaan) dan "Lanjutkan"
     sslErrorData?.let { (handler, _) ->
         AlertDialog(
             onDismissRequest = {
@@ -691,7 +708,6 @@ fun BrowserScreen(
             title = { Text("Peringatan Sertifikat Keamanan") },
             text = { Text("Sertifikat keamanan situs ini tidak valid. Tetap melanjutkan berisiko terhadap privasi dan keamanan Anda.") },
             confirmButton = {
-                // "Kembali" is default
                 Button(
                     onClick = {
                         handler.cancel()
