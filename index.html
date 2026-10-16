@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GubAI - Multi Browser Kiosk</title>
+  <link rel="icon" type="image/png" href="app/src/main/res/mipmap-hdpi/ic_launcher.png">
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    body {
+      background: #F0FDFA;
+      color: #134E4A;
+      line-height: 1.6;
+      padding-bottom: 120px;
+    }
+
+    .container {
+      max-width: 680px;
+      margin: 0 auto;
+      padding: 32px 20px;
+    }
+
+    .hero {
+      text-align: center;
+      margin-bottom: 32px;
+    }
+
+    .app-icon {
+      width: 100px;
+      height: 100px;
+      border-radius: 24px;
+      box-shadow: 0 10px 25px rgba(15, 118, 110, 0.25);
+      margin-bottom: 16px;
+      background: linear-gradient(135deg, #14B8A6, #0F766E);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+    }
+
+    .app-icon svg {
+      width: 60px;
+      height: 60px;
+    }
+
+    h1 {
+      font-size: 28px;
+      font-weight: 800;
+      color: #0F766E;
+      margin-bottom: 6px;
+    }
+
+    .tagline {
+      font-size: 15px;
+      color: #5E817C;
+      margin-bottom: 16px;
+    }
+
+    .badge {
+      display: inline-block;
+      background: #CCFBF1;
+      color: #0F766E;
+      font-size: 12px;
+      font-weight: 700;
+      padding: 4px 12px;
+      border-radius: 20px;
+      margin-bottom: 24px;
+    }
+
+    .card {
+      background: #FFFFFF;
+      border-radius: 20px;
+      padding: 24px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
+      margin-bottom: 20px;
+      border: 1px solid #E6FFFA;
+    }
+
+    .feature-list {
+      list-style: none;
+    }
+
+    .feature-item {
+      display: flex;
+      align-items: flex-start;
+      margin-bottom: 16px;
+    }
+
+    .feature-item:last-child {
+      margin-bottom: 0;
+    }
+
+    .feature-icon {
+      width: 38px;
+      height: 38px;
+      border-radius: 10px;
+      background: #E6FFFA;
+      color: #0F766E;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-right: 14px;
+      font-size: 18px;
+      flex-shrink: 0;
+    }
+
+    .feature-title {
+      font-weight: 700;
+      font-size: 15px;
+      color: #0F766E;
+      margin-bottom: 2px;
+    }
+
+    .feature-desc {
+      font-size: 13px;
+      color: #5E817C;
+    }
+
+    .install-steps {
+      background: #E6FFFA;
+      border-radius: 16px;
+      padding: 16px 20px;
+      font-size: 13px;
+      color: #134E4A;
+      margin-top: 16px;
+    }
+
+    .install-steps ol {
+      margin-left: 18px;
+      margin-top: 8px;
+    }
+
+    .install-steps li {
+      margin-bottom: 4px;
+    }
+
+    /* Floating Install Button */
+    .floating-install-bar {
+      position: fixed;
+      bottom: 24px;
+      left: 0;
+      right: 0;
+      display: flex;
+      justify-content: center;
+      z-index: 1000;
+      padding: 0 16px;
+      pointer-events: none;
+    }
+
+    .floating-btn {
+      pointer-events: auto;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(135deg, #14B8A6 0%, #0F766E 100%);
+      color: #FFFFFF;
+      text-decoration: none;
+      font-size: 16px;
+      font-weight: 700;
+      padding: 16px 32px;
+      border-radius: 50px;
+      box-shadow: 0 8px 25px rgba(15, 118, 110, 0.4);
+      transition: all 0.25s ease;
+      cursor: pointer;
+      border: 2px solid rgba(255, 255, 255, 0.3);
+      animation: pulse 2.5s infinite;
+      max-width: 90%;
+      text-align: center;
+    }
+
+    .floating-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 12px 30px rgba(15, 118, 110, 0.5);
+    }
+
+    .floating-btn:active {
+      transform: scale(0.98);
+    }
+
+    .floating-btn svg {
+      width: 22px;
+      height: 22px;
+      margin-right: 10px;
+      fill: currentColor;
+    }
+
+    @keyframes pulse {
+      0% {
+        box-shadow: 0 8px 25px rgba(15, 118, 110, 0.4);
+      }
+      50% {
+        box-shadow: 0 8px 35px rgba(20, 184, 166, 0.7);
+      }
+      100% {
+        box-shadow: 0 8px 25px rgba(15, 118, 110, 0.4);
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <div class="hero">
+      <div class="app-icon">
+        <svg viewBox="0 0 108 108" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M65 46L59.5 47.5C58 44 55 42.5 51.5 42.5C45 42.5 40.5 47.5 40.5 54C40.5 60.5 45 65.5 51.5 65.5C56.5 65.5 59.5 62.5 60 58H51V52H67V61C64 67 59 71 51.5 71C41.5 71 34 63.5 34 54C34 44.5 41.5 37 51.5 37C58.5 37 63.5 40.8 65 46Z" fill="white"/>
+          <path d="M73 29C73.3 32.2 74.8 33.7 78 34C74.8 34.3 73.3 35.8 73 39C72.7 35.8 71.2 34.3 68 34C71.2 33.7 72.7 32.2 73 29Z" fill="white"/>
+        </svg>
+      </div>
+      <h1>GubAI</h1>
+      <p class="tagline">Multi Browser Kiosk dengan Profil Terpisah & Mode Desktop Windows</p>
+      <span class="badge">Siap Pasang di Android</span>
+    </div>
+
+    <div class="card">
+      <h2 style="font-size: 18px; margin-bottom: 16px; color: #0F766E;">Fitur Unggulan</h2>
+      <ul class="feature-list">
+        <li class="feature-item">
+          <div class="feature-icon">💻</div>
+          <div>
+            <div class="feature-title">Mode Mobile & Desktop Windows</div>
+            <div class="feature-desc">Peramban Chrome desktop penuh (Windows NT 10.0, viewport 1280px, multi-window/popup login).</div>
+          </div>
+        </li>
+        <li class="feature-item">
+          <div class="feature-icon">🔄</div>
+          <div>
+            <div class="feature-title">Sesi Aktif di Latar Belakang</div>
+            <div class="feature-desc">Halaman, video, dan form tetap hidup saat Anda kembali ke Beranda tanpa muat ulang.</div>
+          </div>
+        </li>
+        <li class="feature-item">
+          <div class="feature-icon">🔒</div>
+          <div>
+            <div class="feature-title">Multi-Profil Mandiri</div>
+            <div class="feature-desc">Login, cookie, dan riwayat setiap tombol situs web terisolasi secara mandiri.</div>
+          </div>
+        </li>
+        <li class="feature-item">
+          <div class="feature-icon">📱</div>
+          <div>
+            <div class="feature-title">Kiosk Layar Penuh</div>
+            <div class="feature-desc">Bebas bilah alamat dengan pegangan menu cerdas di tepi layar.</div>
+          </div>
+        </li>
+      </ul>
+
+      <div class="install-steps">
+        <strong>Cara Pasang Cepat:</strong>
+        <ol>
+          <li>Ketuk tombol hijau <strong>"Unduh & Pasang APK"</strong> di bawah.</li>
+          <li>Buka berkas <code>GubAI.apk</code> yang baru diunduh di notifikasi HP Anda.</li>
+          <li>Izinkan pemasangan dari sumber ini bila diminta, lalu ketuk <strong>Instal</strong>.</li>
+        </ol>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tombol Melayang Unduh & Pasang APK (Sekali Klik) -->
+  <div class="floating-install-bar">
+    <a id="downloadButton" href="#" class="floating-btn" onclick="handleDirectDownload(event)">
+      <svg viewBox="0 0 24 24">
+        <path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM17 13l-5 5-5-5h3V9h4v4h3z"/>
+      </svg>
+      Unduh & Pasang APK (Sekali Klik)
+    </a>
+  </div>
+
+  <script>
+    function getDownloadUrl() {
+      // Automatic detection of GitHub repository from hostname/pathname
+      const pathParts = window.location.pathname.split('/').filter(Boolean);
+      const hostname = window.location.hostname;
+
+      if (hostname.endsWith('github.io') && pathParts.length > 0) {
+        const owner = hostname.split('.')[0];
+        const repo = pathParts[0];
+        return `https://github.com/${owner}/${repo}/releases/latest/download/GubAI.apk`;
+      }
+
+      // Default relative path if bundled
+      return 'GubAI.apk';
+    }
+
+    function handleDirectDownload(event) {
+      event.preventDefault();
+      const url = getDownloadUrl();
+      const btn = document.getElementById('downloadButton');
+      btn.innerText = 'Mengunduh APK...';
+      
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'GubAI.apk';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      setTimeout(() => {
+        btn.innerHTML = `
+          <svg viewBox="0 0 24 24" style="width:22px;height:22px;margin-right:10px;fill:currentColor">
+            <path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM17 13l-5 5-5-5h3V9h4v4h3z"/>
+          </svg>
+          Unduh & Pasang APK (Sekali Klik)
+        `;
+      }, 3000);
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      document.getElementById('downloadButton').href = getDownloadUrl();
+    });
+  </script>
+</body>
+</html>
