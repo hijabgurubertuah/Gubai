@@ -36,7 +36,6 @@ import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.Icon
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -55,7 +54,6 @@ import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -125,7 +123,7 @@ fun KioskFloatingMenu(
                 .width(25.dp)
                 .shadow(4.dp, RoundedCornerShape(topEnd = 14.dp, bottomEnd = 14.dp))
                 .clip(RoundedCornerShape(topEnd = 14.dp, bottomEnd = 14.dp))
-                .background(Color(0xFF0F766E).copy(alpha = 0.85f))
+                .background(Color(0xFF042F2E).copy(alpha = 0.95f))
                 .clickable {
                     isMenuOpen = !isMenuOpen
                     if (!isMenuOpen) focusManager.clearFocus()
@@ -140,7 +138,7 @@ fun KioskFloatingMenu(
             )
         }
 
-        // Floating Action Menu with uniform solid background color (no nested boxes or contrasting containers)
+        // Floating Action Menu with strictly uniform dark teal background throughout (no inner lighter containers)
         AnimatedVisibility(
             visible = isMenuOpen,
             enter = fadeIn() + slideInHorizontally(initialOffsetX = { -it / 2 }),
@@ -153,9 +151,9 @@ fun KioskFloatingMenu(
             Column(
                 verticalArrangement = Arrangement.spacedBy(4.dp),
                 modifier = Modifier
-                    .widthIn(min = 160.dp, max = 200.dp)
+                    .widthIn(min = 170.dp, max = 210.dp)
                     .clip(RoundedCornerShape(16.dp))
-                    .background(Color(0xFF0F766E)) // Uniform solid color throughout
+                    .background(Color(0xFF042F2E)) // Pure solid dark teal background (no alpha gradient variation)
                     .shadow(12.dp, RoundedCornerShape(16.dp))
                     .padding(horizontal = 8.dp, vertical = 8.dp)
             ) {
@@ -196,7 +194,7 @@ fun KioskFloatingMenu(
                                 brush = Brush.verticalGradient(
                                     colors = listOf(
                                         Color.Transparent,
-                                        Color.White.copy(alpha = 0.6f),
+                                        Color.White.copy(alpha = 0.5f),
                                         Color.Transparent
                                     )
                                 )
@@ -299,24 +297,23 @@ fun KioskFloatingMenu(
                 // Pemisah seperti jarum
                 NeedleDivider()
 
-                // Baris Ketiga: Kolom Tempel Link sama seperti sekarang
-                Surface(
-                    shape = RoundedCornerShape(20.dp),
-                    color = Color.White,
-                    shadowElevation = 2.dp,
+                // Baris Ketiga: Kolom Tempel Link dengan latar warna yang sama persis (tanpa kotak permukaan putih/terang)
+                Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(vertical = 2.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(Color(0xFF042F2E)) // Same solid dark teal background
+                        .padding(horizontal = 6.dp, vertical = 4.dp)
                 ) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 4.dp)
+                        modifier = Modifier.fillMaxWidth()
                     ) {
                         BasicTextField(
                             value = inputUrl,
                             onValueChange = { inputUrl = it },
                             singleLine = true,
-                            cursorBrush = SolidColor(Color(0xFF0F766E)),
+                            cursorBrush = SolidColor(Color.White),
                             keyboardOptions = KeyboardOptions(
                                 keyboardType = KeyboardType.Uri,
                                 imeAction = ImeAction.Go
@@ -324,13 +321,13 @@ fun KioskFloatingMenu(
                             keyboardActions = KeyboardActions(onGo = { handleOpenUrl(inputUrl) }),
                             modifier = Modifier
                                 .weight(1f)
-                                .padding(horizontal = 6.dp)
+                                .padding(horizontal = 4.dp)
                                 .testTag("input_tempel_link"),
                             decorationBox = { innerTextField ->
                                 if (inputUrl.isEmpty()) {
                                     Text(
                                         text = "https://...",
-                                        color = Color.Gray,
+                                        color = Color.White.copy(alpha = 0.5f),
                                         fontSize = 12.sp
                                     )
                                 }
@@ -344,7 +341,7 @@ fun KioskFloatingMenu(
                             modifier = Modifier
                                 .size(28.dp)
                                 .clip(CircleShape)
-                                .background(Color(0xFFE0F2FE))
+                                .background(Color(0xFF0F766E))
                                 .clickable {
                                     val clipText = clipboardManager.getText()?.text
                                     if (!clipText.isNullOrBlank()) {
@@ -358,8 +355,8 @@ fun KioskFloatingMenu(
                             Icon(
                                 imageVector = Icons.Default.ContentPaste,
                                 contentDescription = "Tempel",
-                                tint = Color(0xFF0369A1),
-                                modifier = Modifier.size(15.dp)
+                                tint = Color.White,
+                                modifier = Modifier.size(14.dp)
                             )
                         }
 
@@ -371,7 +368,7 @@ fun KioskFloatingMenu(
                             modifier = Modifier
                                 .size(28.dp)
                                 .clip(CircleShape)
-                                .background(Color(0xFF0F766E))
+                                .background(Color(0xFF14B8A6))
                                 .clickable { handleOpenUrl(inputUrl) }
                                 .testTag("btn_buka_link")
                         ) {
@@ -379,7 +376,7 @@ fun KioskFloatingMenu(
                                 imageVector = Icons.AutoMirrored.Filled.ArrowForward,
                                 contentDescription = "Buka",
                                 tint = Color.White,
-                                modifier = Modifier.size(15.dp)
+                                modifier = Modifier.size(14.dp)
                             )
                         }
                     }
