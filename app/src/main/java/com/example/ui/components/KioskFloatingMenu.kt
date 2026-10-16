@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
@@ -34,11 +35,7 @@ import androidx.compose.material.icons.filled.ContentPaste
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -50,6 +47,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -65,6 +63,8 @@ import androidx.compose.ui.unit.sp
 
 @Composable
 fun KioskFloatingMenu(
+    onUndo: () -> Unit,
+    onRedo: () -> Unit,
     onReload: () -> Unit,
     onGoHome: () -> Unit,
     onGoToHomepage: () -> Unit,
@@ -141,7 +141,7 @@ fun KioskFloatingMenu(
             )
         }
 
-        // Floating Action Menu Buttons (appearing near the handle when open)
+        // Floating Action Menu (appearing near the handle when open)
         AnimatedVisibility(
             visible = isMenuOpen,
             enter = fadeIn() + slideInHorizontally(initialOffsetX = { -it / 2 }),
@@ -152,13 +152,100 @@ fun KioskFloatingMenu(
                 .imePadding()
         ) {
             Column(
-                verticalArrangement = Arrangement.spacedBy(12.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
                 modifier = Modifier
-                    .clip(RoundedCornerShape(20.dp))
-                    .background(Color(0xFF042F2E).copy(alpha = 0.92f))
-                    .padding(14.dp)
-                    .shadow(12.dp, RoundedCornerShape(20.dp))
+                    .widthIn(min = 180.dp, max = 220.dp)
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(Color(0xFF042F2E).copy(alpha = 0.94f))
+                    .shadow(12.dp, RoundedCornerShape(16.dp))
+                    .padding(horizontal = 8.dp, vertical = 8.dp)
             ) {
+                // Top Row: Tombol Undo dan Redo (panah kiri dan panah kanan) sejajar
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 4.dp, vertical = 2.dp)
+                ) {
+                    // Undo (panah kiri)
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center,
+                        modifier = Modifier
+                            .weight(1f)
+                            .clip(RoundedCornerShape(8.dp))
+                            .clickable {
+                                isMenuOpen = false
+                                onUndo()
+                            }
+                            .padding(vertical = 5.dp)
+                            .testTag("action_undo")
+                    ) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Undo",
+                            tint = Color(0xFF2DD4BF),
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = "Undo",
+                            color = Color.White,
+                            fontSize = 12.5.sp,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+
+                    // Pemisah jarum vertikal antara Undo dan Redo
+                    Box(
+                        modifier = Modifier
+                            .height(18.dp)
+                            .width(1.dp)
+                            .background(
+                                brush = Brush.verticalGradient(
+                                    colors = listOf(
+                                        Color.Transparent,
+                                        Color(0xFF2DD4BF).copy(alpha = 0.7f),
+                                        Color.Transparent
+                                    )
+                                )
+                            )
+                    )
+
+                    // Redo (panah kanan)
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center,
+                        modifier = Modifier
+                            .weight(1f)
+                            .clip(RoundedCornerShape(8.dp))
+                            .clickable {
+                                isMenuOpen = false
+                                onRedo()
+                            }
+                            .padding(vertical = 5.dp)
+                            .testTag("action_redo")
+                    ) {
+                        Text(
+                            text = "Redo",
+                            color = Color.White,
+                            fontSize = 12.5.sp,
+                            fontWeight = FontWeight.Medium
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                            contentDescription = "Redo",
+                            tint = Color(0xFF2DD4BF),
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+                }
+
+                // Pemisah seperti jarum
+                NeedleDivider()
+
                 // 1. Muat Ulang
                 KioskActionButton(
                     icon = Icons.Default.Refresh,
@@ -170,18 +257,24 @@ fun KioskFloatingMenu(
                     }
                 )
 
-                // 2. Halaman Utama (Kembali ke Beranda) -> ikon kembali
+                // Pemisah seperti jarum
+                NeedleDivider()
+
+                // 2. Kembali (sebelumnya Halaman Utama)
                 KioskActionButton(
                     icon = Icons.AutoMirrored.Filled.ArrowBack,
-                    label = "Halaman Utama",
-                    testTag = "action_halaman_utama",
+                    label = "Kembali",
+                    testTag = "action_kembali",
                     onClick = {
                         isMenuOpen = false
                         onGoHome()
                     }
                 )
 
-                // 3. Homepage (Alamat Web Tombol) -> ikon rumah
+                // Pemisah seperti jarum
+                NeedleDivider()
+
+                // 3. Homepage (Alamat Web Tombol)
                 KioskActionButton(
                     icon = Icons.Default.Home,
                     label = "Homepage",
@@ -192,16 +285,21 @@ fun KioskFloatingMenu(
                     }
                 )
 
-                // 4. Kolom Tempel Link (tombol Tempel dan Buka berupa ikon saja)
+                // Pemisah seperti jarum
+                NeedleDivider()
+
+                // 4. Kolom Tempel Link (kapsul kompak dengan ikon Tempel dan Buka)
                 Surface(
-                    shape = RoundedCornerShape(24.dp),
+                    shape = RoundedCornerShape(20.dp),
                     color = Color.White,
-                    shadowElevation = 4.dp,
-                    modifier = Modifier.fillMaxWidth(0.9f)
+                    shadowElevation = 2.dp,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 2.dp)
                 ) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 5.dp)
+                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 4.dp)
                     ) {
                         BasicTextField(
                             value = inputUrl,
@@ -215,14 +313,14 @@ fun KioskFloatingMenu(
                             keyboardActions = KeyboardActions(onGo = { handleOpenUrl(inputUrl) }),
                             modifier = Modifier
                                 .weight(1f)
-                                .padding(horizontal = 8.dp)
+                                .padding(horizontal = 6.dp)
                                 .testTag("input_tempel_link"),
                             decorationBox = { innerTextField ->
                                 if (inputUrl.isEmpty()) {
                                     Text(
                                         text = "https://...",
                                         color = Color.Gray,
-                                        fontSize = 13.sp
+                                        fontSize = 12.sp
                                     )
                                 }
                                 innerTextField()
@@ -233,7 +331,7 @@ fun KioskFloatingMenu(
                         Box(
                             contentAlignment = Alignment.Center,
                             modifier = Modifier
-                                .size(34.dp)
+                                .size(28.dp)
                                 .clip(CircleShape)
                                 .background(Color(0xFFE0F2FE))
                                 .clickable {
@@ -250,17 +348,17 @@ fun KioskFloatingMenu(
                                 imageVector = Icons.Default.ContentPaste,
                                 contentDescription = "Tempel",
                                 tint = Color(0xFF0369A1),
-                                modifier = Modifier.size(18.dp)
+                                modifier = Modifier.size(15.dp)
                             )
                         }
 
-                        Spacer(modifier = Modifier.width(6.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
 
                         // Tombol "Buka" (berupa ikon saja)
                         Box(
                             contentAlignment = Alignment.Center,
                             modifier = Modifier
-                                .size(34.dp)
+                                .size(28.dp)
                                 .clip(CircleShape)
                                 .background(Color(0xFF0F766E))
                                 .clickable { handleOpenUrl(inputUrl) }
@@ -270,7 +368,7 @@ fun KioskFloatingMenu(
                                 imageVector = Icons.AutoMirrored.Filled.ArrowForward,
                                 contentDescription = "Buka",
                                 tint = Color.White,
-                                modifier = Modifier.size(18.dp)
+                                modifier = Modifier.size(15.dp)
                             )
                         }
                     }
@@ -278,6 +376,27 @@ fun KioskFloatingMenu(
             }
         }
     }
+}
+
+@Composable
+private fun NeedleDivider(modifier: Modifier = Modifier) {
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(1.dp)
+            .padding(horizontal = 4.dp)
+            .background(
+                brush = Brush.horizontalGradient(
+                    colors = listOf(
+                        Color.Transparent,
+                        Color(0xFF14B8A6).copy(alpha = 0.35f),
+                        Color(0xFF2DD4BF).copy(alpha = 0.85f),
+                        Color(0xFF14B8A6).copy(alpha = 0.35f),
+                        Color.Transparent
+                    )
+                )
+            )
+    )
 }
 
 @Composable
@@ -290,34 +409,26 @@ private fun KioskActionButton(
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
-            .clip(RoundedCornerShape(12.dp))
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(8.dp))
             .clickable(onClick = onClick)
             .testTag(testTag)
-            .padding(horizontal = 8.dp, vertical = 6.dp)
+            .padding(horizontal = 6.dp, vertical = 6.dp)
     ) {
-        Box(
-            contentAlignment = Alignment.Center,
-            modifier = Modifier
-                .size(44.dp)
-                .clip(CircleShape)
-                .background(Color(0xFF14B8A6))
-                .shadow(4.dp, CircleShape)
-        ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = label,
-                tint = Color.White,
-                modifier = Modifier.size(24.dp)
-            )
-        }
+        Icon(
+            imageVector = icon,
+            contentDescription = label,
+            tint = Color(0xFF2DD4BF),
+            modifier = Modifier.size(19.dp)
+        )
 
-        Spacer(modifier = Modifier.width(12.dp))
+        Spacer(modifier = Modifier.width(10.dp))
 
         Text(
             text = label,
             color = Color.White,
-            fontWeight = FontWeight.SemiBold,
-            fontSize = 14.sp
+            fontWeight = FontWeight.Medium,
+            fontSize = 13.sp
         )
     }
 }

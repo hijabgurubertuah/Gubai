@@ -511,6 +511,22 @@ fun BrowserScreen(
 
         // New Floating Menu Handle and Action Buttons (Left Edge, vertically centered)
         KioskFloatingMenu(
+            onUndo = {
+                if (session.webView.canGoBack()) {
+                    hasError = false
+                    session.webView.goBack()
+                } else {
+                    Toast.makeText(context, "Tidak ada riwayat sebelumnya", Toast.LENGTH_SHORT).show()
+                }
+            },
+            onRedo = {
+                if (session.webView.canGoForward()) {
+                    hasError = false
+                    session.webView.goForward()
+                } else {
+                    Toast.makeText(context, "Tidak ada riwayat berikutnya", Toast.LENGTH_SHORT).show()
+                }
+            },
             onReload = {
                 hasError = false
                 session.webView.reload()
