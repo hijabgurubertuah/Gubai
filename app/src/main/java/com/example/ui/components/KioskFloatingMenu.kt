@@ -117,7 +117,6 @@ fun KioskFloatingMenu(
         }
 
         // Fixed Vertical Handle on Left Edge, exactly vertically centered
-        // Height 120 dp, Width 25 dp, translucent toska, rounded right corners, single hamburger icon
         Box(
             contentAlignment = Alignment.Center,
             modifier = Modifier
@@ -141,7 +140,7 @@ fun KioskFloatingMenu(
             )
         }
 
-        // Floating Action Menu (appearing near the handle when open)
+        // Floating Action Menu with uniform solid background color (no nested boxes or contrasting containers)
         AnimatedVisibility(
             visible = isMenuOpen,
             enter = fadeIn() + slideInHorizontally(initialOffsetX = { -it / 2 }),
@@ -154,46 +153,37 @@ fun KioskFloatingMenu(
             Column(
                 verticalArrangement = Arrangement.spacedBy(4.dp),
                 modifier = Modifier
-                    .widthIn(min = 180.dp, max = 220.dp)
+                    .widthIn(min = 160.dp, max = 200.dp)
                     .clip(RoundedCornerShape(16.dp))
-                    .background(Color(0xFF042F2E).copy(alpha = 0.94f))
+                    .background(Color(0xFF0F766E)) // Uniform solid color throughout
                     .shadow(12.dp, RoundedCornerShape(16.dp))
                     .padding(horizontal = 8.dp, vertical = 8.dp)
             ) {
-                // Top Row: Tombol Undo dan Redo (panah kiri dan panah kanan) sejajar
+                // Baris Atas: Undo dan Redo (ikon saja, sejajar)
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween,
+                    horizontalArrangement = Arrangement.SpaceEvenly,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 4.dp, vertical = 2.dp)
+                        .padding(vertical = 4.dp)
                 ) {
-                    // Undo (panah kiri)
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.Center,
+                    // Undo (ikon panah kiri saja)
+                    Box(
+                        contentAlignment = Alignment.Center,
                         modifier = Modifier
-                            .weight(1f)
-                            .clip(RoundedCornerShape(8.dp))
+                            .size(36.dp)
+                            .clip(CircleShape)
                             .clickable {
                                 isMenuOpen = false
                                 onUndo()
                             }
-                            .padding(vertical = 5.dp)
                             .testTag("action_undo")
                     ) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Undo",
-                            tint = Color(0xFF2DD4BF),
-                            modifier = Modifier.size(18.dp)
-                        )
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text(
-                            text = "Undo",
-                            color = Color.White,
-                            fontSize = 12.5.sp,
-                            fontWeight = FontWeight.Medium
+                            tint = Color.White,
+                            modifier = Modifier.size(20.dp)
                         )
                     }
 
@@ -206,39 +196,30 @@ fun KioskFloatingMenu(
                                 brush = Brush.verticalGradient(
                                     colors = listOf(
                                         Color.Transparent,
-                                        Color(0xFF2DD4BF).copy(alpha = 0.7f),
+                                        Color.White.copy(alpha = 0.6f),
                                         Color.Transparent
                                     )
                                 )
                             )
                     )
 
-                    // Redo (panah kanan)
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.Center,
+                    // Redo (ikon panah kanan saja)
+                    Box(
+                        contentAlignment = Alignment.Center,
                         modifier = Modifier
-                            .weight(1f)
-                            .clip(RoundedCornerShape(8.dp))
+                            .size(36.dp)
+                            .clip(CircleShape)
                             .clickable {
                                 isMenuOpen = false
                                 onRedo()
                             }
-                            .padding(vertical = 5.dp)
                             .testTag("action_redo")
                     ) {
-                        Text(
-                            text = "Redo",
-                            color = Color.White,
-                            fontSize = 12.5.sp,
-                            fontWeight = FontWeight.Medium
-                        )
-                        Spacer(modifier = Modifier.width(6.dp))
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowForward,
                             contentDescription = "Redo",
-                            tint = Color(0xFF2DD4BF),
-                            modifier = Modifier.size(18.dp)
+                            tint = Color.White,
+                            modifier = Modifier.size(20.dp)
                         )
                     }
                 }
@@ -246,49 +227,79 @@ fun KioskFloatingMenu(
                 // Pemisah seperti jarum
                 NeedleDivider()
 
-                // 1. Muat Ulang
-                KioskActionButton(
-                    icon = Icons.Default.Refresh,
-                    label = "Muat Ulang",
-                    testTag = "action_muat_ulang",
-                    onClick = {
-                        isMenuOpen = false
-                        onReload()
+                // Baris Kedua: Kembali, Homepage, Muat Ulang (ketiganya icon saja, sejajar horizontal)
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceEvenly,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 4.dp)
+                ) {
+                    // Kembali (ikon panah kembali saja)
+                    Box(
+                        contentAlignment = Alignment.Center,
+                        modifier = Modifier
+                            .size(36.dp)
+                            .clip(CircleShape)
+                            .clickable {
+                                isMenuOpen = false
+                                onGoHome()
+                            }
+                            .testTag("action_kembali")
+                    ) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Kembali",
+                            tint = Color.White,
+                            modifier = Modifier.size(20.dp)
+                        )
                     }
-                )
+
+                    // Homepage (ikon rumah saja)
+                    Box(
+                        contentAlignment = Alignment.Center,
+                        modifier = Modifier
+                            .size(36.dp)
+                            .clip(CircleShape)
+                            .clickable {
+                                isMenuOpen = false
+                                onGoToHomepage()
+                            }
+                            .testTag("action_homepage")
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Home,
+                            contentDescription = "Homepage",
+                            tint = Color.White,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+
+                    // Muat Ulang (ikon refresh saja)
+                    Box(
+                        contentAlignment = Alignment.Center,
+                        modifier = Modifier
+                            .size(36.dp)
+                            .clip(CircleShape)
+                            .clickable {
+                                isMenuOpen = false
+                                onReload()
+                            }
+                            .testTag("action_muat_ulang")
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Refresh,
+                            contentDescription = "Muat Ulang",
+                            tint = Color.White,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                }
 
                 // Pemisah seperti jarum
                 NeedleDivider()
 
-                // 2. Kembali (sebelumnya Halaman Utama)
-                KioskActionButton(
-                    icon = Icons.AutoMirrored.Filled.ArrowBack,
-                    label = "Kembali",
-                    testTag = "action_kembali",
-                    onClick = {
-                        isMenuOpen = false
-                        onGoHome()
-                    }
-                )
-
-                // Pemisah seperti jarum
-                NeedleDivider()
-
-                // 3. Homepage (Alamat Web Tombol)
-                KioskActionButton(
-                    icon = Icons.Default.Home,
-                    label = "Homepage",
-                    testTag = "action_homepage",
-                    onClick = {
-                        isMenuOpen = false
-                        onGoToHomepage()
-                    }
-                )
-
-                // Pemisah seperti jarum
-                NeedleDivider()
-
-                // 4. Kolom Tempel Link (kapsul kompak dengan ikon Tempel dan Buka)
+                // Baris Ketiga: Kolom Tempel Link sama seperti sekarang
                 Surface(
                     shape = RoundedCornerShape(20.dp),
                     color = Color.White,
@@ -389,46 +400,12 @@ private fun NeedleDivider(modifier: Modifier = Modifier) {
                 brush = Brush.horizontalGradient(
                     colors = listOf(
                         Color.Transparent,
-                        Color(0xFF14B8A6).copy(alpha = 0.35f),
-                        Color(0xFF2DD4BF).copy(alpha = 0.85f),
-                        Color(0xFF14B8A6).copy(alpha = 0.35f),
+                        Color.White.copy(alpha = 0.2f),
+                        Color.White.copy(alpha = 0.7f),
+                        Color.White.copy(alpha = 0.2f),
                         Color.Transparent
                     )
                 )
             )
     )
-}
-
-@Composable
-private fun KioskActionButton(
-    icon: ImageVector,
-    label: String,
-    testTag: String,
-    onClick: () -> Unit
-) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(8.dp))
-            .clickable(onClick = onClick)
-            .testTag(testTag)
-            .padding(horizontal = 6.dp, vertical = 6.dp)
-    ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = label,
-            tint = Color(0xFF2DD4BF),
-            modifier = Modifier.size(19.dp)
-        )
-
-        Spacer(modifier = Modifier.width(10.dp))
-
-        Text(
-            text = label,
-            color = Color.White,
-            fontWeight = FontWeight.Medium,
-            fontSize = 13.sp
-        )
-    }
 }
