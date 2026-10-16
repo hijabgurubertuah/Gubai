@@ -29,10 +29,14 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.ContentPaste
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.RotateLeft
+import androidx.compose.material.icons.filled.RotateRight
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -107,17 +111,17 @@ fun BrowserTopBar(
                 .fillMaxWidth()
                 .padding(horizontal = 8.dp, vertical = 8.dp)
         ) {
-            // Undo (ikon saja)
+            // Undo (ikon panah melengkung)
             TopBarIconButton(
-                icon = Icons.AutoMirrored.Filled.ArrowBack,
+                icon = Icons.Default.RotateLeft,
                 contentDescription = "Undo",
                 testTag = "action_undo",
                 onClick = onUndo
             )
 
-            // Redo (ikon saja)
+            // Redo (ikon panah melengkung)
             TopBarIconButton(
-                icon = Icons.AutoMirrored.Filled.ArrowForward,
+                icon = Icons.Default.RotateRight,
                 contentDescription = "Redo",
                 testTag = "action_redo",
                 onClick = onRedo
