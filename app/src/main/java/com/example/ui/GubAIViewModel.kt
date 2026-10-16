@@ -25,6 +25,7 @@ class GubAIViewModel(application: Application) : AndroidViewModel(application) {
 
     private val repository: TombolRepository
     val tombolList: StateFlow<List<Tombol>>
+    val activeSessionIds: StateFlow<Set<String>> = WebViewSessionManager.activeSessionIds
 
     private val _currentScreen = MutableStateFlow<Screen>(Screen.Home)
     val currentScreen: StateFlow<Screen> = _currentScreen.asStateFlow()
@@ -85,6 +86,11 @@ class GubAIViewModel(application: Application) : AndroidViewModel(application) {
             WebViewSessionManager.resetSessionData(getApplication<Application>(), tombol)
             Toast.makeText(getApplication<Application>(), "Data tombol dibersihkan", Toast.LENGTH_SHORT).show()
         }
+    }
+
+    fun closeSession(tombolId: String) {
+        WebViewSessionManager.destroySession(tombolId)
+        Toast.makeText(getApplication<Application>(), "Sesi ditutup", Toast.LENGTH_SHORT).show()
     }
 
     fun saveReorder(items: List<Tombol>) {

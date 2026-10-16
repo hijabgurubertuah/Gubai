@@ -51,10 +51,12 @@ import com.example.ui.components.TombolCard
 @Composable
 fun HomeScreen(
     tombolList: List<Tombol>,
+    activeSessionIds: Set<String> = emptySet(),
     onOpenBrowser: (String) -> Unit,
     onSaveTombol: (Tombol) -> Unit,
     onDeleteTombol: (Tombol) -> Unit,
     onResetTombolData: (Tombol) -> Unit,
+    onCloseSession: (String) -> Unit = {},
     onSaveReorder: (List<Tombol>) -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -178,10 +180,13 @@ fun HomeScreen(
                         .testTag("tombol_grid")
                 ) {
                     items(tombolList, key = { it.id }) { tombol ->
+                        val isSessionActive = activeSessionIds.contains(tombol.id)
                         TombolCard(
                             tombol = tombol,
+                            isActive = isSessionActive,
                             onClick = { onOpenBrowser(tombol.id) },
-                            onLongClick = { selectedMenuTombol = tombol }
+                            onLongClick = { selectedMenuTombol = tombol },
+                            onCloseSession = { onCloseSession(tombol.id) }
                         )
                     }
 
@@ -219,6 +224,7 @@ fun HomeScreen(
     selectedMenuTombol?.let { tombol ->
         CardMenuDialog(
             tombol = tombol,
+            isActive = activeSessionIds.contains(tombol.id),
             onDismissRequest = { selectedMenuTombol = null },
             onEditClicked = {
                 editingTombol = tombol
@@ -232,6 +238,9 @@ fun HomeScreen(
             },
             onReorderClicked = {
                 showReorderDialog = true
+            },
+            onCloseSessionClicked = {
+                onCloseSession(tombol.id)
             }
         )
     }

@@ -72,11 +72,13 @@ class MainActivity : ComponentActivity() {
 fun GubAIApp(viewModel: GubAIViewModel) {
     val currentScreen by viewModel.currentScreen.collectAsStateWithLifecycle()
     val tombolList by viewModel.tombolList.collectAsStateWithLifecycle()
+    val activeSessionIds by viewModel.activeSessionIds.collectAsStateWithLifecycle()
 
     when (val screen = currentScreen) {
         is Screen.Home -> {
             HomeScreen(
                 tombolList = tombolList,
+                activeSessionIds = activeSessionIds,
                 onOpenBrowser = { tombolId ->
                     viewModel.openBrowser(tombolId)
                 },
@@ -88,6 +90,9 @@ fun GubAIApp(viewModel: GubAIViewModel) {
                 },
                 onResetTombolData = { tombol ->
                     viewModel.resetTombolData(tombol)
+                },
+                onCloseSession = { tombolId ->
+                    viewModel.closeSession(tombolId)
                 },
                 onSaveReorder = { reorderedList ->
                     viewModel.saveReorder(reorderedList)

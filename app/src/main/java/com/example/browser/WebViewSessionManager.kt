@@ -7,6 +7,9 @@ import android.webkit.CookieManager
 import android.webkit.WebSettings
 import android.webkit.WebView
 import com.example.data.model.Tombol
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 
 object WebViewSessionManager {
 
@@ -14,6 +17,12 @@ object WebViewSessionManager {
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36"
 
     private val sessions = mutableMapOf<String, ButtonSession>()
+    private val _activeSessionIds = MutableStateFlow<Set<String>>(emptySet())
+    val activeSessionIds: StateFlow<Set<String>> = _activeSessionIds.asStateFlow()
+
+    private fun updateActiveState() {
+        _activeSessionIds.value = sessions.keys.toSet()
+    }
 
     class ButtonSession(
         val tombolId: String,
@@ -94,6 +103,7 @@ object WebViewSessionManager {
             originalAddress = tombol.alamat
         )
         sessions[tombol.id] = session
+        updateActiveState()
         return session
     }
 
@@ -147,6 +157,7 @@ object WebViewSessionManager {
             session.webView.clearHistory()
             session.webView.destroy()
         }
+        updateActiveState()
     }
 
     fun resetSessionData(context: Context, tombol: Tombol) {

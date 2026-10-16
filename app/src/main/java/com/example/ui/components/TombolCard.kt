@@ -21,6 +21,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.DesktopWindows
 import androidx.compose.material.icons.filled.PhoneAndroid
 import androidx.compose.material3.Card
@@ -52,8 +53,10 @@ import com.example.ui.theme.TealPrimary
 @Composable
 fun TombolCard(
     tombol: Tombol,
+    isActive: Boolean = false,
     onClick: () -> Unit,
     onLongClick: () -> Unit,
+    onCloseSession: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     val buttonColor = remember(tombol.warna) {
@@ -73,10 +76,12 @@ fun TombolCard(
     Card(
         shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
+            containerColor = if (isActive) MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
+            else MaterialTheme.colorScheme.surface
         ),
+        border = if (isActive) BorderStroke(2.5.dp, Color(0xFF14B8A6)) else null,
         elevation = CardDefaults.cardElevation(
-            defaultElevation = 2.dp,
+            defaultElevation = if (isActive) 4.dp else 2.dp,
             pressedElevation = 6.dp
         ),
         modifier = modifier
@@ -90,6 +95,28 @@ fun TombolCard(
             )
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
+            // Close session button at Top-Start (jika halaman sedang aktif berjalan di latar)
+            if (isActive) {
+                Box(
+                    contentAlignment = Alignment.Center,
+                    modifier = Modifier
+                        .align(Alignment.TopStart)
+                        .padding(top = 6.dp, start = 6.dp)
+                        .size(22.dp)
+                        .clip(CircleShape)
+                        .background(Color(0xFFEF4444))
+                        .clickable { onCloseSession?.invoke() }
+                        .testTag("btn_close_session_${tombol.id}")
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Close,
+                        contentDescription = "Tutup Sesi",
+                        tint = Color.White,
+                        modifier = Modifier.size(13.dp)
+                    )
+                }
+            }
+
             // Mode Badge in top-right corner
             val isDesktop = tombol.mode.equals("Desktop", ignoreCase = true)
             val badgeBg = if (isDesktop) Color(0xFF1E40AF) else Color(0xFF14B8A6)

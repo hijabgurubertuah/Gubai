@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Refresh
@@ -36,11 +37,13 @@ import com.example.data.model.Tombol
 @Composable
 fun CardMenuDialog(
     tombol: Tombol,
+    isActive: Boolean = false,
     onDismissRequest: () -> Unit,
     onEditClicked: () -> Unit,
     onDeleteClicked: () -> Unit,
     onResetClicked: () -> Unit,
-    onReorderClicked: () -> Unit
+    onReorderClicked: () -> Unit,
+    onCloseSessionClicked: (() -> Unit)? = null
 ) {
     Dialog(onDismissRequest = onDismissRequest) {
         Card(
@@ -103,6 +106,19 @@ fun CardMenuDialog(
                         onReorderClicked()
                     }
                 )
+
+                if (isActive) {
+                    MenuItemRow(
+                        icon = Icons.Default.Close,
+                        label = "Tutup Sesi Latar Belakang",
+                        tint = Color(0xFFEF4444),
+                        testTag = "menu_tutup_sesi",
+                        onClick = {
+                            onDismissRequest()
+                            onCloseSessionClicked?.invoke()
+                        }
+                    )
+                }
 
                 MenuItemRow(
                     icon = Icons.Default.Delete,
