@@ -28,12 +28,12 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.ContentPaste
 import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.Send
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
@@ -170,9 +170,9 @@ fun KioskFloatingMenu(
                     }
                 )
 
-                // 2. Halaman Utama (Home Beranda)
+                // 2. Halaman Utama (Kembali ke Beranda) -> ikon kembali
                 KioskActionButton(
-                    icon = Icons.Default.Home,
+                    icon = Icons.AutoMirrored.Filled.ArrowBack,
                     label = "Halaman Utama",
                     testTag = "action_halaman_utama",
                     onClick = {
@@ -181,9 +181,9 @@ fun KioskFloatingMenu(
                     }
                 )
 
-                // 3. Homepage (Alamat Web Tombol)
+                // 3. Homepage (Alamat Web Tombol) -> ikon rumah
                 KioskActionButton(
-                    icon = Icons.Default.Language,
+                    icon = Icons.Default.Home,
                     label = "Homepage",
                     testTag = "action_homepage",
                     onClick = {
@@ -192,8 +192,7 @@ fun KioskFloatingMenu(
                     }
                 )
 
-                // 4. Kolom Tempel Link
-                // Bentuk kapsul dengan tombol "Tempel" dan tombol "Buka"
+                // 4. Kolom Tempel Link (tombol Tempel dan Buka berupa ikon saja)
                 Surface(
                     shape = RoundedCornerShape(24.dp),
                     color = Color.White,
@@ -202,7 +201,7 @@ fun KioskFloatingMenu(
                 ) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 5.dp)
                     ) {
                         BasicTextField(
                             value = inputUrl,
@@ -216,7 +215,7 @@ fun KioskFloatingMenu(
                             keyboardActions = KeyboardActions(onGo = { handleOpenUrl(inputUrl) }),
                             modifier = Modifier
                                 .weight(1f)
-                                .padding(horizontal = 6.dp)
+                                .padding(horizontal = 8.dp)
                                 .testTag("input_tempel_link"),
                             decorationBox = { innerTextField ->
                                 if (inputUrl.isEmpty()) {
@@ -230,51 +229,49 @@ fun KioskFloatingMenu(
                             }
                         )
 
-                        // Tombol "Tempel"
-                        Button(
-                            onClick = {
-                                val clipText = clipboardManager.getText()?.text
-                                if (!clipText.isNullOrBlank()) {
-                                    inputUrl = clipText
-                                } else {
-                                    Toast.makeText(context, "Papan klip kosong", Toast.LENGTH_SHORT).show()
-                                }
-                            },
-                            shape = RoundedCornerShape(16.dp),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = Color(0xFFE0F2FE),
-                                contentColor = Color(0xFF0369A1)
-                            ),
-                            contentPadding = androidx.compose.foundation.layout.PaddingValues(
-                                horizontal = 10.dp,
-                                vertical = 4.dp
-                            ),
+                        // Tombol "Tempel" (berupa ikon saja)
+                        Box(
+                            contentAlignment = Alignment.Center,
                             modifier = Modifier
-                                .height(32.dp)
+                                .size(34.dp)
+                                .clip(CircleShape)
+                                .background(Color(0xFFE0F2FE))
+                                .clickable {
+                                    val clipText = clipboardManager.getText()?.text
+                                    if (!clipText.isNullOrBlank()) {
+                                        inputUrl = clipText
+                                    } else {
+                                        Toast.makeText(context, "Papan klip kosong", Toast.LENGTH_SHORT).show()
+                                    }
+                                }
                                 .testTag("btn_tempel_link")
                         ) {
-                            Text(text = "Tempel", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                            Icon(
+                                imageVector = Icons.Default.ContentPaste,
+                                contentDescription = "Tempel",
+                                tint = Color(0xFF0369A1),
+                                modifier = Modifier.size(18.dp)
+                            )
                         }
 
                         Spacer(modifier = Modifier.width(6.dp))
 
-                        // Tombol "Buka"
-                        Button(
-                            onClick = { handleOpenUrl(inputUrl) },
-                            shape = RoundedCornerShape(16.dp),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = Color(0xFF0F766E),
-                                contentColor = Color.White
-                            ),
-                            contentPadding = androidx.compose.foundation.layout.PaddingValues(
-                                horizontal = 12.dp,
-                                vertical = 4.dp
-                            ),
+                        // Tombol "Buka" (berupa ikon saja)
+                        Box(
+                            contentAlignment = Alignment.Center,
                             modifier = Modifier
-                                .height(32.dp)
+                                .size(34.dp)
+                                .clip(CircleShape)
+                                .background(Color(0xFF0F766E))
+                                .clickable { handleOpenUrl(inputUrl) }
                                 .testTag("btn_buka_link")
                         ) {
-                            Text(text = "Buka", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                                contentDescription = "Buka",
+                                tint = Color.White,
+                                modifier = Modifier.size(18.dp)
+                            )
                         }
                     }
                 }

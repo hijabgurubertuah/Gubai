@@ -55,6 +55,10 @@ class GubAIViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun openBrowser(tombolId: String) {
+        val tombol = tombolList.value.find { it.id == tombolId }
+        if (tombol != null) {
+            WebViewSessionManager.getOrCreateSession(getApplication<Application>(), tombol)
+        }
         _currentScreen.value = Screen.Browser(tombolId)
     }
 

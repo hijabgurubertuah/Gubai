@@ -35,6 +35,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathEffect
@@ -76,13 +77,17 @@ fun TombolCard(
     Card(
         shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(
-            containerColor = if (isActive) MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
+            containerColor = if (isActive) Color(0xFFE6FFFA)
             else MaterialTheme.colorScheme.surface
         ),
-        border = if (isActive) BorderStroke(2.5.dp, Color(0xFF14B8A6)) else null,
+        border = if (isActive) {
+            BorderStroke(4.dp, Color(0xFF14B8A6))
+        } else {
+            BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+        },
         elevation = CardDefaults.cardElevation(
-            defaultElevation = if (isActive) 4.dp else 2.dp,
-            pressedElevation = 6.dp
+            defaultElevation = if (isActive) 8.dp else 2.dp,
+            pressedElevation = 8.dp
         ),
         modifier = modifier
             .fillMaxWidth()
@@ -95,14 +100,15 @@ fun TombolCard(
             )
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
-            // Close session button at Top-Start (jika halaman sedang aktif berjalan di latar)
+            // Close session button at Top-Start (muncul jika halaman sedang aktif berjalan di latar)
             if (isActive) {
                 Box(
                     contentAlignment = Alignment.Center,
                     modifier = Modifier
                         .align(Alignment.TopStart)
                         .padding(top = 6.dp, start = 6.dp)
-                        .size(22.dp)
+                        .size(30.dp)
+                        .shadow(3.dp, CircleShape)
                         .clip(CircleShape)
                         .background(Color(0xFFEF4444))
                         .clickable { onCloseSession?.invoke() }
@@ -112,7 +118,7 @@ fun TombolCard(
                         imageVector = Icons.Default.Close,
                         contentDescription = "Tutup Sesi",
                         tint = Color.White,
-                        modifier = Modifier.size(13.dp)
+                        modifier = Modifier.size(16.dp)
                     )
                 }
             }
