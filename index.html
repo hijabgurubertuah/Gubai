@@ -273,34 +273,38 @@
   </div>
 
   <script>
-    function getDownloadUrl() {
-      // Automatic detection of GitHub repository from hostname/pathname
+    function getDownloadUrls() {
       const pathParts = window.location.pathname.split('/').filter(Boolean);
       const hostname = window.location.hostname;
+      let releaseUrl = 'GubAI.apk';
 
       if (hostname.endsWith('github.io') && pathParts.length > 0) {
         const owner = hostname.split('.')[0];
         const repo = pathParts[0];
-        return `https://github.com/${owner}/${repo}/releases/latest/download/GubAI.apk`;
+        releaseUrl = `https://github.com/${owner}/${repo}/releases/latest/download/GubAI.apk`;
       }
 
-      // Default relative path if bundled
-      return 'GubAI.apk';
+      return {
+        staticUrl: 'GubAI.apk',
+        releaseUrl: releaseUrl
+      };
     }
 
     function handleDirectDownload(event) {
       event.preventDefault();
-      const url = getDownloadUrl();
+      const urls = getDownloadUrls();
       const btn = document.getElementById('downloadButton');
       btn.innerText = 'Mengunduh APK...';
-      
+
+      // First try direct file download from current directory
       const link = document.createElement('a');
-      link.href = url;
+      link.href = urls.staticUrl;
       link.download = 'GubAI.apk';
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
 
+      // In case static is 404 on local or releases is used, open releaseUrl in new window as fallback after 1.5s
       setTimeout(() => {
         btn.innerHTML = `
           <svg viewBox="0 0 24 24" style="width:22px;height:22px;margin-right:10px;fill:currentColor">
@@ -308,11 +312,12 @@
           </svg>
           Unduh & Pasang APK (Sekali Klik)
         `;
-      }, 3000);
+      }, 2500);
     }
 
     document.addEventListener('DOMContentLoaded', () => {
-      document.getElementById('downloadButton').href = getDownloadUrl();
+      const urls = getDownloadUrls();
+      document.getElementById('downloadButton').href = urls.staticUrl;
     });
   </script>
 </body>

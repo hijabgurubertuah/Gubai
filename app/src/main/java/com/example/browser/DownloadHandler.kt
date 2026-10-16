@@ -81,6 +81,15 @@ class DownloadHandler(private val context: Context) {
             val request = DownloadManager.Request(Uri.parse(url)).apply {
                 setMimeType(mimeType)
                 userAgent?.let { addRequestHeader("User-Agent", it) }
+                try {
+                    val cookies = android.webkit.CookieManager.getInstance().getCookie(url)
+                    if (!cookies.isNullOrBlank()) {
+                        addRequestHeader("Cookie", cookies)
+                    }
+                } catch (e: Exception) {
+                    // ignore
+                }
+                addRequestHeader("Referer", url)
                 setDescription("Mengunduh $fileName")
                 setTitle(fileName)
                 setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
