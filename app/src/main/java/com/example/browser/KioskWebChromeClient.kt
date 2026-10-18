@@ -113,57 +113,30 @@ class KioskWebChromeClient(
         isUserGesture: Boolean,
         resultMsg: Message?
     ): Boolean {
-        val ctx = view?.context ?: return false
-
-        // Create popup WebView with same profile to support window.open and opener
-        val popupWebView = WebView(ctx).apply {
-            layoutParams = ViewGroup.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.MATCH_PARENT
-            )
-
-            // Attach profile of this button
-            WebViewProfileManager.attachProfileToWebView(this, tombolId)
-
-            settings.apply {
-                javaScriptEnabled = true
-                domStorageEnabled = true
-                databaseEnabled = true
-                mediaPlaybackRequiresUserGesture = false
-                setSupportZoom(true)
-                builtInZoomControls = true
-                displayZoomControls = false
-                allowFileAccess = true
-                allowContentAccess = true
-                setSupportMultipleWindows(true)
-                javaScriptCanOpenWindowsAutomatically = true
-                userAgentString = view.settings.userAgentString
-            }
-
-            try {
-                CookieManager.getInstance().setAcceptThirdPartyCookies(this, true)
-            } catch (e: Exception) {
-                // ignore
-            }
-
-            webChromeClient = object : WebChromeClient() {
-                override fun onCloseWindow(window: WebView?) {
-                    onClosePopup()
-                }
-            }
-
-            webViewClient = object : WebViewClient() {
-                override fun shouldOverrideUrlLoading(v: WebView?, request: WebResourceRequest?): Boolean {
-                    return false
-                }
-            }
-        }
-
         val transport = resultMsg?.obj as? WebView.WebViewTransport
-        if (transport != null) {
-            transport.webView = popupWebView
+        if (transport != null && view != null) {
+            // Instead of opening a separate popup window, load the target URL directly in the main WebView
+            // This ensures dropdown sub-menus, login redirects, and target="_blank" links open seamlessly in the main column.
+            val dummyWebView = WebView(view.context).apply {
+                webViewClient = object : WebViewClient() {
+                    override fun shouldOverrideUrlLoading(v: WebView?, request: WebResourceRequest?): Boolean {
+                        val url = request?.url?.toString()
+                        if (!url.isNullOrEmpty()) {
+                            view.loadUrl(url)
+                        }
+                        return true
+                    }
+                    @Deprecated("Deprecated in Java")
+                    override fun shouldOverrideUrlLoading(v: WebView?, url: String?): Boolean {
+                        if (!url.isNullOrEmpty()) {
+                            view.loadUrl(url)
+                        }
+                        return true
+                    }
+                }
+            }
+            transport.webView = dummyWebView
             resultMsg.sendToTarget()
-            onCreatePopup(popupWebView)
             return true
         }
         return false
