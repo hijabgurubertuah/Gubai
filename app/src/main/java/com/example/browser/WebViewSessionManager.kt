@@ -2,14 +2,20 @@ package com.example.browser
 
 import android.annotation.SuppressLint
 import android.content.Context
+import android.os.Bundle
+import android.os.Parcel
 import android.view.ViewGroup
 import android.webkit.CookieManager
 import android.webkit.WebSettings
 import android.webkit.WebView
 import com.example.data.model.Tombol
+import com.example.service.SessionKeepAliveService
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import java.io.File
+import java.io.FileInputStream
+import java.io.FileOutputStream
 
 object WebViewSessionManager {
 
@@ -20,8 +26,21 @@ object WebViewSessionManager {
     private val _activeSessionIds = MutableStateFlow<Set<String>>(emptySet())
     val activeSessionIds: StateFlow<Set<String>> = _activeSessionIds.asStateFlow()
 
-    private fun updateActiveState() {
-        _activeSessionIds.value = sessions.keys.toSet()
+    // Tracks which tab was last visible so returning from background opens the exact same tab
+    var lastActiveTombolId: String? = null
+
+    private fun updateActiveState(context: Context? = null) {
+        val activeKeys = sessions.keys.toSet()
+        _activeSessionIds.value = activeKeys
+
+        // Manage Foreground Service based on active session count
+        context?.let { ctx ->
+            if (activeKeys.isNotEmpty()) {
+                SessionKeepAliveService.startOrUpdate(ctx, activeKeys.size)
+            } else {
+                SessionKeepAliveService.stop(ctx)
+            }
+        }
     }
 
     class ButtonSession(
@@ -91,9 +110,12 @@ object WebViewSessionManager {
             // Apply Mobile / Desktop specific configuration
             applyModeSettings(this, tombol.mode, context)
 
-            // Load initial target
-            val initialTarget = tombol.alamatTerakhir.ifBlank { tombol.alamat }
-            loadUrl(initialTarget)
+            // Try restoring low-memory backup state first, or fallback to URL
+            val restored = restoreSessionState(context, tombol.id, this)
+            if (!restored) {
+                val initialTarget = tombol.alamatTerakhir.ifBlank { tombol.alamat }
+                loadUrl(initialTarget)
+            }
         }
 
         val session = ButtonSession(
@@ -103,7 +125,7 @@ object WebViewSessionManager {
             originalAddress = tombol.alamat
         )
         sessions[tombol.id] = session
-        updateActiveState()
+        updateActiveState(context)
         return session
     }
 
@@ -150,17 +172,39 @@ object WebViewSessionManager {
         webView.evaluateJavascript(js, null)
     }
 
-    fun destroySession(tombolId: String) {
+    fun destroySession(context: Context, tombolId: String) {
+        clearSavedState(context, tombolId)
         sessions.remove(tombolId)?.let { session ->
             (session.webView.parent as? ViewGroup)?.removeView(session.webView)
             session.webView.stopLoading()
             session.webView.clearHistory()
             session.webView.destroy()
         }
-        updateActiveState()
+        if (lastActiveTombolId == tombolId) {
+            lastActiveTombolId = null
+        }
+        updateActiveState(context)
+    }
+
+    fun closeAllSessions() {
+        val sessionList = sessions.values.toList()
+        sessions.clear()
+        sessionList.forEach { session ->
+            try {
+                (session.webView.parent as? ViewGroup)?.removeView(session.webView)
+                session.webView.stopLoading()
+                session.webView.clearHistory()
+                session.webView.destroy()
+            } catch (e: Exception) {
+                // ignore
+            }
+        }
+        lastActiveTombolId = null
+        _activeSessionIds.value = emptySet()
     }
 
     fun resetSessionData(context: Context, tombol: Tombol) {
+        clearSavedState(context, tombol.id)
         WebViewProfileManager.clearProfileData(context, tombol.id)
         sessions[tombol.id]?.let { session ->
             session.webView.clearCache(true)
@@ -184,6 +228,92 @@ object WebViewSessionManager {
             } else if (needsReload) {
                 session.webView.reload()
             }
+        }
+    }
+
+    // Called when the application is backgrounded/minimized
+    fun onAppBackgrounded(context: Context) {
+        // Flush cookies to ensure storage persistence across restarts
+        try {
+            CookieManager.getInstance().flush()
+        } catch (e: Exception) {
+            // ignore
+        }
+
+        // Save state backup for each running session in case of system low-memory kill
+        sessions.forEach { (tombolId, session) ->
+            saveSessionState(context, tombolId, session.webView)
+        }
+        // CRITICAL: DO NOT call webView.pauseTimers() or webView.onPause()
+        // This keeps audio, video, WebSockets, background tabs running seamlessly.
+    }
+
+    // Called when the application returns to foreground
+    fun onResumeAllSessions() {
+        sessions.values.forEach { session ->
+            try {
+                session.webView.onResume()
+            } catch (e: Exception) {
+                // ignore
+            }
+        }
+    }
+
+    private fun getStateFile(context: Context, tombolId: String): File {
+        val dir = File(context.filesDir, "webview_states")
+        if (!dir.exists()) dir.mkdirs()
+        return File(dir, "state_${tombolId}.bin")
+    }
+
+    fun saveSessionState(context: Context, tombolId: String, webView: WebView) {
+        try {
+            val bundle = Bundle()
+            val stateSaved = webView.saveState(bundle)
+            if (stateSaved != null) {
+                val parcel = Parcel.obtain()
+                bundle.writeToParcel(parcel, 0)
+                val bytes = parcel.marshall()
+                parcel.recycle()
+
+                val file = getStateFile(context, tombolId)
+                FileOutputStream(file).use { fos ->
+                    fos.write(bytes)
+                }
+            }
+        } catch (e: Exception) {
+            // ignore save state failure
+        }
+    }
+
+    fun restoreSessionState(context: Context, tombolId: String, webView: WebView): Boolean {
+        try {
+            val file = getStateFile(context, tombolId)
+            if (!file.exists()) return false
+
+            val bytes = FileInputStream(file).use { fis ->
+                fis.readBytes()
+            }
+            if (bytes.isEmpty()) return false
+
+            val parcel = Parcel.obtain()
+            parcel.unmarshall(bytes, 0, bytes.size)
+            parcel.setDataPosition(0)
+            val bundle = Bundle.CREATOR.createFromParcel(parcel)
+            parcel.recycle()
+
+            val restored = webView.restoreState(bundle)
+            return restored != null
+        } catch (e: Exception) {
+            return false
+        }
+    }
+
+    fun clearSavedState(context: Context, tombolId: String) {
+        try {
+            val file = getStateFile(context, tombolId)
+            if (file.exists()) file.delete()
+        } catch (e: Exception) {
+            // ignore
         }
     }
 }

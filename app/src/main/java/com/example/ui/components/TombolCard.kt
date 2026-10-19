@@ -35,8 +35,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -77,7 +80,7 @@ fun TombolCard(
     Card(
         shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
+            containerColor = if (isActive) Color(0xFF042F2E) else MaterialTheme.colorScheme.surface
         ),
         elevation = CardDefaults.cardElevation(
             defaultElevation = if (isActive) 6.dp else 2.dp,
@@ -88,12 +91,17 @@ fun TombolCard(
             .aspectRatio(0.85f)
             .testTag("tombol_card_${tombol.id}")
             .clip(RoundedCornerShape(20.dp))
-            .drawBehind {
+            .drawWithContent {
+                drawContent()
                 if (isActive) {
+                    val strokeWidth = 4.dp.toPx()
+                    val halfStroke = strokeWidth / 2f
                     drawRoundRect(
                         color = Color(0xFF00FF66), // Hijau stabilo (Neon lime)
-                        style = Stroke(width = 4.dp.toPx()),
-                        cornerRadius = CornerRadius(20.dp.toPx(), 20.dp.toPx())
+                        topLeft = Offset(halfStroke, halfStroke),
+                        size = Size(size.width - strokeWidth, size.height - strokeWidth),
+                        style = Stroke(width = strokeWidth),
+                        cornerRadius = CornerRadius(20.dp.toPx() - halfStroke, 20.dp.toPx() - halfStroke)
                     )
                 }
             }
@@ -197,7 +205,7 @@ fun TombolCard(
                         fontWeight = FontWeight.SemiBold,
                         fontSize = 13.sp
                     ),
-                    color = MaterialTheme.colorScheme.onSurface,
+                    color = if (isActive) Color.White else MaterialTheme.colorScheme.onSurface,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                     textAlign = TextAlign.Center,

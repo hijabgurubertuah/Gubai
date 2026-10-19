@@ -27,7 +27,9 @@ class GubAIViewModel(application: Application) : AndroidViewModel(application) {
     val tombolList: StateFlow<List<Tombol>>
     val activeSessionIds: StateFlow<Set<String>> = WebViewSessionManager.activeSessionIds
 
-    private val _currentScreen = MutableStateFlow<Screen>(Screen.Home)
+    private val _currentScreen = MutableStateFlow<Screen>(
+        WebViewSessionManager.lastActiveTombolId?.let { Screen.Browser(it) } ?: Screen.Home
+    )
     val currentScreen: StateFlow<Screen> = _currentScreen.asStateFlow()
 
     init {
@@ -59,10 +61,12 @@ class GubAIViewModel(application: Application) : AndroidViewModel(application) {
         if (tombol != null) {
             WebViewSessionManager.getOrCreateSession(getApplication<Application>(), tombol)
         }
+        WebViewSessionManager.lastActiveTombolId = tombolId
         _currentScreen.value = Screen.Browser(tombolId)
     }
 
     fun navigateToHome() {
+        WebViewSessionManager.lastActiveTombolId = null
         _currentScreen.value = Screen.Home
     }
 
@@ -76,7 +80,7 @@ class GubAIViewModel(application: Application) : AndroidViewModel(application) {
 
     fun deleteTombol(tombol: Tombol) {
         viewModelScope.launch {
-            WebViewSessionManager.destroySession(tombol.id)
+            WebViewSessionManager.destroySession(getApplication<Application>(), tombol.id)
             // Delete profile data (cookies, storage, history)
             WebViewProfileManager.deleteProfile(getApplication<Application>(), tombol.id)
             repository.delete(tombol)
@@ -93,7 +97,7 @@ class GubAIViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun closeSession(tombolId: String) {
-        WebViewSessionManager.destroySession(tombolId)
+        WebViewSessionManager.destroySession(getApplication<Application>(), tombolId)
         Toast.makeText(getApplication<Application>(), "Sesi ditutup", Toast.LENGTH_SHORT).show()
     }
 
