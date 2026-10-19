@@ -3,7 +3,6 @@ package com.example.ui.components
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -19,6 +18,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Language
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -31,15 +31,15 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.data.model.Tombol
+import com.example.data.model.TabEntity
 
 @Composable
 fun BrowserTabBar(
-    activeTabs: List<Tombol>,
-    currentTombolId: String,
+    tabs: List<TabEntity>,
+    activeTabId: String,
     onSelectTab: (String) -> Unit,
     onCloseTab: (String) -> Unit,
-    onAddNewTab: () -> Unit,
+    onAddNewTabClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val scrollState = rememberScrollState()
@@ -48,23 +48,18 @@ fun BrowserTabBar(
         verticalAlignment = Alignment.CenterVertically,
         modifier = modifier
             .fillMaxWidth()
-            .height(40.dp)
+            .height(38.dp)
             .background(Color(0xFF021C1B))
             .padding(horizontal = 6.dp)
             .horizontalScroll(scrollState)
             .testTag("browser_tab_bar")
     ) {
-        // Daftar Tab Aktif
-        activeTabs.forEach { tabTombol ->
-            val isSelected = tabTombol.id == currentTombolId
+        // Daftar Tab pada Browser ini
+        tabs.forEach { tab ->
+            val isSelected = tab.tabId == activeTabId
 
             val tabBg = if (isSelected) Color(0xFF0F766E) else Color(0xFF032827)
             val tabTextColor = if (isSelected) Color.White else Color(0xFF99F6E4).copy(alpha = 0.7f)
-            val tabDotColor = try {
-                Color(android.graphics.Color.parseColor(tabTombol.warna))
-            } catch (e: Exception) {
-                Color(0xFF14B8A6)
-            }
 
             Box(
                 modifier = Modifier
@@ -72,33 +67,33 @@ fun BrowserTabBar(
                     .height(32.dp)
                     .clip(RoundedCornerShape(topStart = 8.dp, topEnd = 8.dp, bottomStart = 4.dp, bottomEnd = 4.dp))
                     .background(tabBg)
-                    .clickable { onSelectTab(tabTombol.id) }
-                    .testTag("tab_item_${tabTombol.id}")
+                    .clickable { onSelectTab(tab.tabId) }
+                    .testTag("tab_item_${tab.tabId}")
             ) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier
                         .padding(horizontal = 10.dp, vertical = 6.dp)
                 ) {
-                    // Dot warna tombol situs
-                    Box(
-                        modifier = Modifier
-                            .size(8.dp)
-                            .clip(CircleShape)
-                            .background(tabDotColor)
+                    Icon(
+                        imageVector = Icons.Default.Language,
+                        contentDescription = null,
+                        tint = if (isSelected) Color(0xFF00FF66) else Color(0xFF2DD4BF),
+                        modifier = Modifier.size(13.dp)
                     )
 
                     Spacer(modifier = Modifier.width(6.dp))
 
-                    // Nama situs / Judul tab
+                    // Judul Tab
+                    val displayTitle = tab.title.ifBlank { "Tab Baru" }
                     Text(
-                        text = tabTombol.nama,
+                        text = displayTitle,
                         color = tabTextColor,
                         fontSize = 12.sp,
                         fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.widthIn(max = 120.dp)
+                        modifier = Modifier.widthIn(max = 140.dp)
                     )
 
                     Spacer(modifier = Modifier.width(8.dp))
@@ -109,15 +104,15 @@ fun BrowserTabBar(
                         modifier = Modifier
                             .size(18.dp)
                             .clip(CircleShape)
-                            .background(if (isSelected) Color.White.copy(alpha = 0.15f) else Color.Transparent)
-                            .clickable { onCloseTab(tabTombol.id) }
-                            .testTag("btn_close_tab_${tabTombol.id}")
+                            .background(if (isSelected) Color.White.copy(alpha = 0.18f) else Color.Transparent)
+                            .clickable { onCloseTab(tab.tabId) }
+                            .testTag("btn_close_tab_${tab.tabId}")
                     ) {
                         Icon(
                             imageVector = Icons.Default.Close,
-                            contentDescription = "Tutup Tab ${tabTombol.nama}",
+                            contentDescription = "Tutup Tab $displayTitle",
                             tint = if (isSelected) Color.White else Color(0xFF99F6E4).copy(alpha = 0.6f),
-                            modifier = Modifier.size(12.dp)
+                            modifier = Modifier.size(11.dp)
                         )
                     }
                 }
@@ -135,21 +130,21 @@ fun BrowserTabBar(
             }
         }
 
-        // Tombol Tambah Tab (+)
+        // Tombol Tambah Tab (+) di ujung tab bar
         Box(
             contentAlignment = Alignment.Center,
             modifier = Modifier
-                .size(30.dp)
+                .size(28.dp)
                 .clip(CircleShape)
                 .background(Color(0xFF042F2E))
-                .clickable(onClick = onAddNewTab)
-                .testTag("btn_add_new_tab")
+                .clickable(onClick = onAddNewTabClick)
+                .testTag("btn_tab_bar_add")
         ) {
             Icon(
                 imageVector = Icons.Default.Add,
-                contentDescription = "Buka Tab Baru",
-                tint = Color(0xFF2DD4BF),
-                modifier = Modifier.size(18.dp)
+                contentDescription = "Tambah Tab",
+                tint = Color(0xFF00FF66),
+                modifier = Modifier.size(16.dp)
             )
         }
     }

@@ -8,7 +8,6 @@ import android.view.ViewGroup
 import android.webkit.CookieManager
 import android.webkit.WebSettings
 import android.webkit.WebView
-import com.example.data.model.Tombol
 import com.example.service.SessionKeepAliveService
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -22,66 +21,80 @@ object WebViewSessionManager {
     const val DESKTOP_USER_AGENT =
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36"
 
-    private val sessions = mutableMapOf<String, ButtonSession>()
-    private val _activeSessionIds = MutableStateFlow<Set<String>>(emptySet())
-    val activeSessionIds: StateFlow<Set<String>> = _activeSessionIds.asStateFlow()
+    // Sessions map keyed by "$siteId:$tabId"
+    private val sessions = mutableMapOf<String, TabSession>()
 
-    // Tracks which tab was last visible so returning from background opens the exact same tab
+    // Set of active site IDs (for Home Screen card active indicator)
+    private val _activeSiteIds = MutableStateFlow<Set<String>>(emptySet())
+    val activeSiteIds: StateFlow<Set<String>> = _activeSiteIds.asStateFlow()
+    val activeSessionIds: StateFlow<Set<String>> = _activeSiteIds.asStateFlow()
+
+    // Tracks which site was last visible
     var lastActiveTombolId: String? = null
 
+    private fun sessionKey(siteId: String, tabId: String): String = "$siteId:$tabId"
+
     private fun updateActiveState(context: Context? = null) {
-        val activeKeys = sessions.keys.toSet()
-        _activeSessionIds.value = activeKeys
+        val uniqueSites = sessions.values.map { it.siteId }.toSet()
+        _activeSiteIds.value = uniqueSites
 
         // Manage Foreground Service based on active session count
         context?.let { ctx ->
-            if (activeKeys.isNotEmpty()) {
-                SessionKeepAliveService.startOrUpdate(ctx, activeKeys.size)
+            if (sessions.isNotEmpty()) {
+                SessionKeepAliveService.startOrUpdate(ctx, sessions.size)
             } else {
                 SessionKeepAliveService.stop(ctx)
             }
         }
     }
 
-    class ButtonSession(
-        val tombolId: String,
+    class TabSession(
+        val siteId: String,
+        val tabId: String,
         val webView: WebView,
         var mode: String,
-        var originalAddress: String
+        var currentUrl: String
     )
 
+    fun getSession(siteId: String, tabId: String): TabSession? {
+        return sessions[sessionKey(siteId, tabId)]
+    }
+
+    fun hasAnyActiveTab(siteId: String): Boolean {
+        return sessions.values.any { it.siteId == siteId }
+    }
+
     @SuppressLint("SetJavaScriptEnabled")
-    fun getOrCreateSession(
+    fun getOrCreateTabSession(
         context: Context,
-        tombol: Tombol
-    ): ButtonSession {
-        val existing = sessions[tombol.id]
+        siteId: String,
+        tabId: String,
+        initialUrl: String,
+        mode: String
+    ): TabSession {
+        val key = sessionKey(siteId, tabId)
+        val existing = sessions[key]
         if (existing != null) {
-            // Check if mode was changed
-            if (!existing.mode.equals(tombol.mode, ignoreCase = true)) {
-                existing.mode = tombol.mode
-                applyModeSettings(existing.webView, tombol.mode, context)
+            if (!existing.mode.equals(mode, ignoreCase = true)) {
+                existing.mode = mode
+                applyModeSettings(existing.webView, mode, context)
                 existing.webView.reload()
-            }
-            // Check if address was changed
-            if (existing.originalAddress != tombol.alamat) {
-                existing.originalAddress = tombol.alamat
-                existing.webView.loadUrl(tombol.alamat)
             }
             return existing
         }
 
-        // Create new WebView
+        // Create new WebView for this tab
         val newWebView = WebView(context).apply {
             layoutParams = ViewGroup.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.MATCH_PARENT
             )
 
-            // Attach multi-profile isolation
-            WebViewProfileManager.attachProfileToWebView(this, tombol.id)
+            // CRITICAL: Attach profile of the parent site!
+            // All tabs belonging to the same siteId share cookies, login, localStorage, and Google accounts!
+            WebViewProfileManager.attachProfileToWebView(this, siteId)
 
-            // Common browser settings
+            // Kiosk web settings
             settings.apply {
                 javaScriptEnabled = true
                 domStorageEnabled = true
@@ -108,23 +121,24 @@ object WebViewSessionManager {
             }
 
             // Apply Mobile / Desktop specific configuration
-            applyModeSettings(this, tombol.mode, context)
+            applyModeSettings(this, mode, context)
 
-            // Try restoring low-memory backup state first, or fallback to URL
-            val restored = restoreSessionState(context, tombol.id, this)
+            // Try restoring low-memory backup state first, or fallback to initial URL
+            val restored = restoreSessionState(context, siteId, tabId, this)
             if (!restored) {
-                val initialTarget = tombol.alamatTerakhir.ifBlank { tombol.alamat }
-                loadUrl(initialTarget)
+                val targetUrl = initialUrl.ifBlank { "https://www.google.com" }
+                loadUrl(targetUrl)
             }
         }
 
-        val session = ButtonSession(
-            tombolId = tombol.id,
+        val session = TabSession(
+            siteId = siteId,
+            tabId = tabId,
             webView = newWebView,
-            mode = tombol.mode,
-            originalAddress = tombol.alamat
+            mode = mode,
+            currentUrl = initialUrl
         )
-        sessions[tombol.id] = session
+        sessions[key] = session
         updateActiveState(context)
         return session
     }
@@ -172,15 +186,31 @@ object WebViewSessionManager {
         webView.evaluateJavascript(js, null)
     }
 
-    fun destroySession(context: Context, tombolId: String) {
-        clearSavedState(context, tombolId)
-        sessions.remove(tombolId)?.let { session ->
+    fun destroyTabSession(context: Context, siteId: String, tabId: String) {
+        val key = sessionKey(siteId, tabId)
+        clearSavedState(context, siteId, tabId)
+        sessions.remove(key)?.let { session ->
             (session.webView.parent as? ViewGroup)?.removeView(session.webView)
             session.webView.stopLoading()
             session.webView.clearHistory()
             session.webView.destroy()
         }
-        if (lastActiveTombolId == tombolId) {
+        updateActiveState(context)
+    }
+
+    fun destroyAllSessionsForSite(context: Context, siteId: String) {
+        val keysToRemove = sessions.filter { it.value.siteId == siteId }.keys.toList()
+        keysToRemove.forEach { key ->
+            val session = sessions.remove(key)
+            if (session != null) {
+                clearSavedState(context, session.siteId, session.tabId)
+                (session.webView.parent as? ViewGroup)?.removeView(session.webView)
+                session.webView.stopLoading()
+                session.webView.clearHistory()
+                session.webView.destroy()
+            }
+        }
+        if (lastActiveTombolId == siteId) {
             lastActiveTombolId = null
         }
         updateActiveState(context)
@@ -200,35 +230,12 @@ object WebViewSessionManager {
             }
         }
         lastActiveTombolId = null
-        _activeSessionIds.value = emptySet()
+        _activeSiteIds.value = emptySet()
     }
 
-    fun resetSessionData(context: Context, tombol: Tombol) {
-        clearSavedState(context, tombol.id)
-        WebViewProfileManager.clearProfileData(context, tombol.id)
-        sessions[tombol.id]?.let { session ->
-            session.webView.clearCache(true)
-            session.webView.clearFormData()
-            session.webView.clearHistory()
-            session.webView.loadUrl(tombol.alamat)
-        }
-    }
-
-    fun onAddressOrModeChanged(tombol: Tombol, context: Context) {
-        sessions[tombol.id]?.let { session ->
-            var needsReload = false
-            if (!session.mode.equals(tombol.mode, ignoreCase = true)) {
-                session.mode = tombol.mode
-                applyModeSettings(session.webView, tombol.mode, context)
-                needsReload = true
-            }
-            if (session.originalAddress != tombol.alamat) {
-                session.originalAddress = tombol.alamat
-                session.webView.loadUrl(tombol.alamat)
-            } else if (needsReload) {
-                session.webView.reload()
-            }
-        }
+    fun resetSiteData(context: Context, siteId: String) {
+        destroyAllSessionsForSite(context, siteId)
+        WebViewProfileManager.clearProfileData(context, siteId)
     }
 
     // Called when the application is backgrounded/minimized
@@ -240,9 +247,9 @@ object WebViewSessionManager {
             // ignore
         }
 
-        // Save state backup for each running session in case of system low-memory kill
-        sessions.forEach { (tombolId, session) ->
-            saveSessionState(context, tombolId, session.webView)
+        // Save state backup for each running tab session in case of system low-memory kill
+        sessions.forEach { (_, session) ->
+            saveSessionState(context, session.siteId, session.tabId, session.webView)
         }
         // CRITICAL: DO NOT call webView.pauseTimers() or webView.onPause()
         // This keeps audio, video, WebSockets, background tabs running seamlessly.
@@ -259,13 +266,13 @@ object WebViewSessionManager {
         }
     }
 
-    private fun getStateFile(context: Context, tombolId: String): File {
+    private fun getStateFile(context: Context, siteId: String, tabId: String): File {
         val dir = File(context.filesDir, "webview_states")
         if (!dir.exists()) dir.mkdirs()
-        return File(dir, "state_${tombolId}.bin")
+        return File(dir, "state_${siteId}_${tabId}.bin")
     }
 
-    fun saveSessionState(context: Context, tombolId: String, webView: WebView) {
+    fun saveSessionState(context: Context, siteId: String, tabId: String, webView: WebView) {
         try {
             val bundle = Bundle()
             val stateSaved = webView.saveState(bundle)
@@ -275,7 +282,7 @@ object WebViewSessionManager {
                 val bytes = parcel.marshall()
                 parcel.recycle()
 
-                val file = getStateFile(context, tombolId)
+                val file = getStateFile(context, siteId, tabId)
                 FileOutputStream(file).use { fos ->
                     fos.write(bytes)
                 }
@@ -285,9 +292,9 @@ object WebViewSessionManager {
         }
     }
 
-    fun restoreSessionState(context: Context, tombolId: String, webView: WebView): Boolean {
+    fun restoreSessionState(context: Context, siteId: String, tabId: String, webView: WebView): Boolean {
         try {
-            val file = getStateFile(context, tombolId)
+            val file = getStateFile(context, siteId, tabId)
             if (!file.exists()) return false
 
             val bytes = FileInputStream(file).use { fis ->
@@ -308,9 +315,9 @@ object WebViewSessionManager {
         }
     }
 
-    fun clearSavedState(context: Context, tombolId: String) {
+    fun clearSavedState(context: Context, siteId: String, tabId: String) {
         try {
-            val file = getStateFile(context, tombolId)
+            val file = getStateFile(context, siteId, tabId)
             if (file.exists()) file.delete()
         } catch (e: Exception) {
             // ignore

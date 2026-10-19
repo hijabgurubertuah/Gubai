@@ -27,8 +27,16 @@ class KioskWebChromeClient(
     private val onClosePopup: () -> Unit,
     private val onJsAlertRequest: (message: String, result: JsResult) -> Unit,
     private val onJsConfirmRequest: (message: String, result: JsResult) -> Unit,
-    private val onJsPromptRequest: (message: String, defaultValue: String, result: JsPromptResult) -> Unit
+    private val onJsPromptRequest: (message: String, defaultValue: String, result: JsPromptResult) -> Unit,
+    private val onReceivedTitleCallback: ((String) -> Unit)? = null
 ) : WebChromeClient() {
+
+    override fun onReceivedTitle(view: WebView?, title: String?) {
+        super.onReceivedTitle(view, title)
+        if (!title.isNullOrBlank()) {
+            onReceivedTitleCallback?.invoke(title)
+        }
+    }
 
     override fun onProgressChanged(view: WebView?, newProgress: Int) {
         super.onProgressChanged(view, newProgress)
@@ -122,15 +130,25 @@ class KioskWebChromeClient(
                     override fun shouldOverrideUrlLoading(v: WebView?, request: WebResourceRequest?): Boolean {
                         val url = request?.url?.toString()
                         if (!url.isNullOrEmpty()) {
-                            view.loadUrl(url)
+                            view.post {
+                                view.loadUrl(url)
+                                try { v?.destroy() } catch (e: Exception) {}
+                            }
                         }
                         return true
                     }
                     @Deprecated("Deprecated in Java")
                     override fun shouldOverrideUrlLoading(v: WebView?, url: String?): Boolean {
                         if (!url.isNullOrEmpty()) {
-                            view.loadUrl(url)
+                            view.post {
+                                view.loadUrl(url)
+                                try { v?.destroy() } catch (e: Exception) {}
+                            }
                         }
+                        return true
+                    }
+                    override fun onRenderProcessGone(v: WebView?, detail: android.webkit.RenderProcessGoneDetail?): Boolean {
+                        try { v?.destroy() } catch (e: Exception) {}
                         return true
                     }
                 }

@@ -141,26 +141,33 @@ fun GubAIApp(viewModel: GubAIViewModel) {
         is Screen.Browser -> {
             val currentTombol = tombolList.find { it.id == screen.tombolId }
             if (currentTombol != null) {
+                val siteTabs by viewModel.getTabsForSite(currentTombol.id)
+                    .collectAsStateWithLifecycle(initialValue = emptyList())
+
                 BrowserScreen(
                     tombol = currentTombol,
-                    allTombolList = tombolList,
-                    activeSessionIds = activeSessionIds,
-                    onSwitchTab = { newTombolId ->
-                        viewModel.openBrowser(newTombolId)
+                    tabs = siteTabs,
+                    onAddNewTab = { input ->
+                        viewModel.addNewTab(
+                            siteId = currentTombol.id,
+                            input = input,
+                            isDesktop = currentTombol.mode.equals("Desktop", ignoreCase = true)
+                        )
                     },
-                    onCloseTab = { tombolIdToClose ->
-                        val remainingActive = activeSessionIds.filter { it != tombolIdToClose }
-                        viewModel.closeSession(tombolIdToClose)
-                        if (tombolIdToClose == currentTombol.id) {
-                            if (remainingActive.isNotEmpty()) {
-                                viewModel.openBrowser(remainingActive.first())
-                            } else {
-                                viewModel.navigateToHome()
-                            }
-                        }
+                    onSelectTab = { tabId ->
+                        viewModel.switchTab(currentTombol.id, tabId)
                     },
-                    onSaveTombol = { newTombol ->
-                        viewModel.saveTombol(newTombol)
+                    onCloseTab = { tabId ->
+                        viewModel.closeTab(
+                            siteId = currentTombol.id,
+                            tabId = tabId,
+                            defaultUrl = currentTombol.alamat,
+                            defaultTitle = currentTombol.nama,
+                            isDesktop = currentTombol.mode.equals("Desktop", ignoreCase = true)
+                        )
+                    },
+                    onUpdateTabTitleAndUrl = { tabId, title, url ->
+                        viewModel.updateTabTitleAndUrl(tabId, title, url)
                     },
                     onBackToHome = {
                         viewModel.navigateToHome()

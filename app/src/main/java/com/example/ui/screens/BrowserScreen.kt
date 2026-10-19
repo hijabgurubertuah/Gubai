@@ -48,6 +48,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
@@ -58,6 +59,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -80,48 +82,75 @@ import com.example.browser.DownloadHandler
 import com.example.browser.KioskWebChromeClient
 import com.example.browser.KioskWebViewClient
 import com.example.browser.WebViewSessionManager
+import com.example.data.model.TabEntity
 import com.example.data.model.Tombol
 import com.example.ui.components.BrowserTabBar
 import com.example.ui.components.BrowserTopBar
-import com.example.ui.components.FormTombolDialog
-import com.example.ui.components.SelectTabDialog
 
 @SuppressLint("SetJavaScriptEnabled")
 @Composable
 fun BrowserScreen(
     tombol: Tombol,
-    allTombolList: List<Tombol> = emptyList(),
-    activeSessionIds: Set<String> = emptySet(),
-    onSwitchTab: (String) -> Unit = {},
-    onCloseTab: (String) -> Unit = {},
-    onSaveTombol: (Tombol) -> Unit = {},
+    tabs: List<TabEntity>,
+    onAddNewTab: (String) -> Unit,
+    onSelectTab: (String) -> Unit,
+    onCloseTab: (String) -> Unit,
+    onUpdateTabTitleAndUrl: (tabId: String, title: String, url: String) -> Unit,
     onBackToHome: () -> Unit,
     onUpdateLastUrl: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
+    var sessionVersion by remember { mutableIntStateOf(0) }
 
-    // Retrieve or create persistent background session
-    val session = remember(tombol.id) {
-        WebViewSessionManager.getOrCreateSession(context, tombol)
+    // Active tab in this browser
+    val activeTab = remember(tabs) {
+        tabs.find { it.isActive } ?: tabs.firstOrNull()
     }
 
-    var showSelectTabDialog by remember { mutableStateOf(false) }
-    var showFormDialog by remember { mutableStateOf(false) }
-
-    // List of active tabs to display in the tab bar
-    val activeTabs = remember(allTombolList, activeSessionIds, tombol) {
-        val list = allTombolList.filter { activeSessionIds.contains(it.id) }.toMutableList()
-        if (list.none { it.id == tombol.id }) {
-            list.add(0, tombol)
+    if (activeTab == null) {
+        // While initial tab is created
+        Box(
+            modifier = modifier
+                .fillMaxSize()
+                .background(Color(0xFF042F2E)),
+            contentAlignment = Alignment.Center
+        ) {
+            CircularProgressIndicator(color = Color(0xFF00FF66))
         }
-        list
+        return
+    }
+
+    // Retrieve or create persistent background session for this (siteId, tabId)
+    val session = remember(tombol.id, activeTab.tabId, sessionVersion) {
+        WebViewSessionManager.getOrCreateTabSession(
+            context = context,
+            siteId = tombol.id,
+            tabId = activeTab.tabId,
+            initialUrl = activeTab.url.ifBlank { tombol.alamat },
+            mode = if (activeTab.isDesktopMode) "Desktop" else tombol.mode
+        )
     }
 
     var currentProgress by remember { mutableIntStateOf(0) }
     var isLoading by remember { mutableStateOf(false) }
     var hasError by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf("") }
+
+    // Active tab navigation states for Undo/Redo button status
+    var canGoBack by remember { mutableStateOf(false) }
+    var canGoForward by remember { mutableStateOf(false) }
+    var isAddTabOpen by remember { mutableStateOf(false) }
+
+    val updateNavigationState = {
+        val activeSession = WebViewSessionManager.getSession(tombol.id, activeTab.tabId) ?: session
+        canGoBack = activeSession.webView.canGoBack()
+        canGoForward = activeSession.webView.canGoForward()
+    }
+
+    LaunchedEffect(activeTab.tabId, sessionVersion) {
+        updateNavigationState()
+    }
 
     // Fullscreen video
     var customVideoView by remember { mutableStateOf<View?>(null) }
@@ -135,7 +164,9 @@ fun BrowserScreen(
 
     // Hardware permission requests
     var pendingPermissionRequest by remember { mutableStateOf<PermissionRequest?>(null) }
-    var pendingGeoCallback by remember { mutableStateOf<Pair<String, android.webkit.GeolocationPermissions.Callback>?>(null) }
+    var pendingGeoCallback by remember {
+        mutableStateOf<Pair<String, android.webkit.GeolocationPermissions.Callback>?>(null)
+    }
 
     // Dialog state for JS Alert, Confirm, Prompt
     var jsAlertData by remember { mutableStateOf<Pair<String, JsResult>?>(null) }
@@ -151,11 +182,11 @@ fun BrowserScreen(
     // Download handler
     val downloadHandler = remember { DownloadHandler(context) }
 
-    DisposableEffect(Unit) {
+    DisposableEffect(activeTab.tabId) {
         downloadHandler.register()
         onDispose {
             downloadHandler.unregister()
-            // Detach webView from its parent container so it stays in memory without being destroyed
+            // Detach webView from its parent container so it stays alive in memory without being destroyed
             (session.webView.parent as? ViewGroup)?.removeView(session.webView)
         }
     }
@@ -218,8 +249,8 @@ fun BrowserScreen(
         pendingGeoCallback = null
     }
 
-    // Configure clients on the session's webView
-    val isDesktop = tombol.mode.equals("Desktop", ignoreCase = true)
+    // Configure clients on the active tab session's webView
+    val isDesktop = activeTab.isDesktopMode || tombol.mode.equals("Desktop", ignoreCase = true)
 
     session.webView.apply {
         setDownloadListener { url, userAgent, contentDisposition, mimetype, _ ->
@@ -231,6 +262,11 @@ fun BrowserScreen(
             onProgressChanged = { progress ->
                 currentProgress = progress
                 isLoading = progress < 100
+            },
+            onReceivedTitleCallback = { newTitle ->
+                if (newTitle.isNotBlank()) {
+                    onUpdateTabTitleAndUrl(activeTab.tabId, newTitle, session.webView.url ?: activeTab.url)
+                }
             },
             onShowFileChooser = { callback, params ->
                 filePathCallback?.onReceiveValue(null)
@@ -308,24 +344,34 @@ fun BrowserScreen(
             onPageStartedCallback = { url ->
                 hasError = false
                 onUpdateLastUrl(url)
+                updateNavigationState()
             },
             onPageFinishedCallback = { url ->
+                val currentTitle = title?.takeIf { it.isNotBlank() } ?: activeTab.title
+                onUpdateTabTitleAndUrl(activeTab.tabId, currentTitle, url)
                 onUpdateLastUrl(url)
+                updateNavigationState()
             },
             onErrorCallback = { desc ->
                 hasError = true
                 errorMessage = desc
+                updateNavigationState()
             },
             onHttpAuthRequest = { host, realm, handler ->
                 httpAuthData = Triple(host, realm, handler)
             },
             onSslErrorRequest = { handler, error ->
                 sslErrorData = Pair(handler, error)
+            },
+            onRenderProcessGoneCallback = {
+                WebViewSessionManager.destroyTabSession(context, tombol.id, activeTab.tabId)
+                sessionVersion++
+                updateNavigationState()
             }
         )
     }
 
-    // Android Back button handling
+    // Android Back button handling (only applies to active tab)
     BackHandler {
         if (popupWebView != null) {
             popupWebView = null
@@ -333,85 +379,110 @@ fun BrowserScreen(
             customViewCallback?.onCustomViewHidden()
             customVideoView = null
             customViewCallback = null
-        } else if (session.webView.canGoBack()) {
-            session.webView.goBack()
         } else {
-            onBackToHome()
+            val activeSession = WebViewSessionManager.getSession(tombol.id, activeTab.tabId) ?: session
+            if (activeSession.webView.canGoBack()) {
+                activeSession.webView.goBack()
+                activeSession.webView.post { updateNavigationState() }
+            } else {
+                onBackToHome()
+            }
         }
     }
 
-    // Layout utama: Kolom dengan BrowserTopBar di atas, WebView di tengah, dan bar kosong di bawah
+    // Layout utama: Kolom dengan BrowserTopBar di atas, BrowserTabBar di bawahnya, WebView di tengah
     Column(
         modifier = modifier
             .fillMaxSize()
             .background(Color(0xFF042F2E))
     ) {
-        // 1. BrowserTopBar di bagian paling atas
+        // 1. BrowserTopBar di bagian paling atas (hanya beroperasi pada tab aktif)
         BrowserTopBar(
+            canGoBack = canGoBack,
+            canGoForward = canGoForward,
+            isAddTabOpen = isAddTabOpen,
+            onToggleAddTab = { isAddTabOpen = !isAddTabOpen },
             onUndo = {
-                if (session.webView.canGoBack()) {
+                val activeSession = WebViewSessionManager.getSession(tombol.id, activeTab.tabId) ?: session
+                if (activeSession.webView.canGoBack()) {
                     hasError = false
-                    session.webView.goBack()
+                    activeSession.webView.goBack()
+                    activeSession.webView.post { updateNavigationState() }
                 } else {
                     Toast.makeText(context, "Tidak ada riwayat sebelumnya", Toast.LENGTH_SHORT).show()
                 }
             },
             onRedo = {
-                if (session.webView.canGoForward()) {
+                val activeSession = WebViewSessionManager.getSession(tombol.id, activeTab.tabId) ?: session
+                if (activeSession.webView.canGoForward()) {
                     hasError = false
-                    session.webView.goForward()
+                    activeSession.webView.goForward()
+                    activeSession.webView.post { updateNavigationState() }
                 } else {
                     Toast.makeText(context, "Tidak ada riwayat berikutnya", Toast.LENGTH_SHORT).show()
                 }
             },
             onReload = {
+                val activeSession = WebViewSessionManager.getSession(tombol.id, activeTab.tabId) ?: session
                 hasError = false
-                session.webView.reload()
+                activeSession.webView.reload()
+                activeSession.webView.post { updateNavigationState() }
             },
             onGoHome = {
                 onBackToHome()
             },
             onGoToHomepage = {
+                val activeSession = WebViewSessionManager.getSession(tombol.id, activeTab.tabId) ?: session
                 hasError = false
-                session.webView.loadUrl(tombol.alamat)
+                activeSession.webView.loadUrl(tombol.alamat)
             },
             onOpenUrl = { newUrl ->
+                val activeSession = WebViewSessionManager.getSession(tombol.id, activeTab.tabId) ?: session
                 hasError = false
-                session.webView.loadUrl(newUrl)
+                activeSession.webView.loadUrl(newUrl)
+            },
+            onAddNewTab = { input ->
+                onAddNewTab(input)
             }
         )
 
-        // 2. Bar Tab yang menampilkan tab-tab yang sedang aktif berjalan
+        // 2. Bar Tab yang menampilkan tab-tab di dalam browser ini
         BrowserTabBar(
-            activeTabs = activeTabs,
-            currentTombolId = tombol.id,
+            tabs = tabs,
+            activeTabId = activeTab.tabId,
             onSelectTab = { selectedId ->
-                if (selectedId != tombol.id) {
-                    onSwitchTab(selectedId)
+                if (selectedId != activeTab.tabId) {
+                    onSelectTab(selectedId)
                 }
             },
             onCloseTab = { closeId ->
                 onCloseTab(closeId)
             },
-            onAddNewTab = {
-                showSelectTabDialog = true
+            onAddNewTabClick = {
+                isAddTabOpen = true
             }
         )
 
-        // 3. Area WebView di tengah (diapit oleh top bar dan bottom empty bar)
+        // 3. Area WebView di tengah
         Box(
             modifier = Modifier
                 .weight(1f)
                 .fillMaxWidth()
                 .background(Color.Black)
         ) {
-            // Main Persistent WebView
+            // Main Persistent WebView for Active Tab
             AndroidView(
                 factory = { _ ->
                     (session.webView.parent as? ViewGroup)?.removeView(session.webView)
                     session.webView
                 },
-                update = { _ -> },
+                update = { webView ->
+                    (webView.parent as? ViewGroup)?.let { parent ->
+                        if (parent != webView.parent) {
+                            parent.removeView(webView)
+                        }
+                    }
+                },
                 modifier = Modifier.fillMaxSize()
             )
 
@@ -424,68 +495,51 @@ fun BrowserScreen(
                                 ViewGroup.LayoutParams.MATCH_PARENT,
                                 ViewGroup.LayoutParams.MATCH_PARENT
                             )
-                            (videoView.parent as? ViewGroup)?.removeView(videoView)
                             addView(videoView)
                         }
                     },
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(Color.Black)
+                    modifier = Modifier.fillMaxSize()
                 )
             }
 
-            // Popup Window Floating Container (for window.open, OAuth, Payments, 2FA)
-            popupWebView?.let { popupView ->
+            // Popup Window from window.open
+            popupWebView?.let { popup ->
                 Box(
-                    contentAlignment = Alignment.Center,
                     modifier = Modifier
                         .fillMaxSize()
                         .background(Color.Black.copy(alpha = 0.5f))
                         .padding(16.dp)
                 ) {
                     Card(
-                        shape = RoundedCornerShape(16.dp),
-                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                        elevation = CardDefaults.cardElevation(defaultElevation = 16.dp),
-                        modifier = Modifier.fillMaxSize()
+                        modifier = Modifier.fillMaxSize(),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = CardDefaults.cardColors(containerColor = Color.White),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
                     ) {
                         Column(modifier = Modifier.fillMaxSize()) {
-                            // Popup Header Bar with Close Button
                             Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.SpaceBetween,
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .background(MaterialTheme.colorScheme.primaryContainer)
-                                    .padding(horizontal = 12.dp, vertical = 6.dp)
+                                    .background(Color(0xFF042F2E))
+                                    .padding(horizontal = 8.dp, vertical = 4.dp),
+                                horizontalArrangement = Arrangement.End,
+                                verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Text(
-                                    text = "Jendela Baru",
-                                    style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
-                                    color = MaterialTheme.colorScheme.onPrimaryContainer
-                                )
                                 IconButton(
-                                    onClick = {
-                                        (popupView.parent as? ViewGroup)?.removeView(popupView)
-                                        popupView.destroy()
-                                        popupWebView = null
-                                    },
-                                    modifier = Modifier.size(32.dp)
+                                    onClick = { popupWebView = null },
+                                    modifier = Modifier.size(36.dp)
                                 ) {
                                     Icon(
                                         imageVector = Icons.Default.Close,
-                                        contentDescription = "Tutup",
-                                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                                        modifier = Modifier.size(20.dp)
+                                        contentDescription = "Tutup Jendela",
+                                        tint = Color.White
                                     )
                                 }
                             }
-
-                            // Popup content WebView
                             AndroidView(
                                 factory = { _ ->
-                                    (popupView.parent as? ViewGroup)?.removeView(popupView)
-                                    popupView
+                                    (popup.parent as? ViewGroup)?.removeView(popup)
+                                    popup
                                 },
                                 modifier = Modifier.fillMaxSize()
                             )
@@ -494,32 +548,34 @@ fun BrowserScreen(
                 }
             }
 
-            // Thin loading progress bar at the top
-            if (isLoading && !hasError) {
+            // Progress Bar saat loading
+            if (isLoading) {
                 LinearProgressIndicator(
                     progress = { currentProgress / 100f },
-                    color = MaterialTheme.colorScheme.primary,
-                    trackColor = Color.Transparent,
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(3.dp)
-                        .align(Alignment.TopCenter)
+                        .align(Alignment.TopCenter),
+                    color = Color(0xFF00FF66),
+                    trackColor = Color.Transparent
                 )
             }
 
-            // Error Screen: "Halaman tidak dapat dimuat"
+            // Error Screen jika terjadi kendala jaringan
             if (hasError) {
                 Box(
-                    contentAlignment = Alignment.Center,
                     modifier = Modifier
                         .fillMaxSize()
                         .background(MaterialTheme.colorScheme.background)
-                        .padding(24.dp)
+                        .padding(24.dp),
+                    contentAlignment = Alignment.Center
                 ) {
                     Card(
-                        shape = RoundedCornerShape(24.dp),
-                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                        elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
+                        shape = RoundedCornerShape(16.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surface
+                        ),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
                         modifier = Modifier.fillMaxWidth(0.9f)
                     ) {
                         Column(
@@ -530,49 +586,42 @@ fun BrowserScreen(
                         ) {
                             Icon(
                                 imageVector = Icons.Default.Warning,
-                                contentDescription = "Galat",
+                                contentDescription = null,
                                 tint = MaterialTheme.colorScheme.error,
-                                modifier = Modifier.size(56.dp)
+                                modifier = Modifier.size(48.dp)
                             )
-
                             Spacer(modifier = Modifier.height(16.dp))
-
                             Text(
-                                text = "Halaman tidak dapat dimuat",
+                                text = "Gagal Memuat Halaman",
                                 style = MaterialTheme.typography.titleMedium.copy(
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 18.sp
+                                    fontWeight = FontWeight.Bold
                                 ),
-                                color = MaterialTheme.colorScheme.onSurface,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                text = errorMessage.ifEmpty { "Periksa koneksi internet Anda lalu coba lagi." },
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 textAlign = TextAlign.Center
                             )
-
-                            Spacer(modifier = Modifier.height(24.dp))
-
-                            Row(
-                                horizontalArrangement = Arrangement.Center,
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
+                            Spacer(modifier = Modifier.height(20.dp))
+                            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                                 OutlinedButton(
                                     onClick = onBackToHome,
-                                    shape = RoundedCornerShape(12.dp),
-                                    contentPadding = PaddingValues(horizontal = 20.dp, vertical = 10.dp)
+                                    shape = RoundedCornerShape(8.dp)
                                 ) {
                                     Text("Beranda")
                                 }
-
-                                Spacer(modifier = Modifier.width(12.dp))
-
                                 Button(
                                     onClick = {
                                         hasError = false
                                         session.webView.reload()
                                     },
-                                    shape = RoundedCornerShape(12.dp),
                                     colors = ButtonDefaults.buttonColors(
                                         containerColor = MaterialTheme.colorScheme.primary
                                     ),
-                                    contentPadding = PaddingValues(horizontal = 20.dp, vertical = 10.dp)
+                                    shape = RoundedCornerShape(8.dp)
                                 ) {
                                     Text("Coba Lagi")
                                 }
@@ -583,35 +632,36 @@ fun BrowserScreen(
             }
         }
 
-        // 3. Bar kosong di bagian bawah (setinggi bar navigasi bawah HP) bertuliskan By : Guber Smart dengan warna hijau gelap
+        // 4. Bar Kosong di Bagian Bawah
         Box(
-            contentAlignment = Alignment.Center,
             modifier = Modifier
                 .fillMaxWidth()
-                .height(48.dp)
-                .background(Color(0xFF042F2E))
+                .height(44.dp)
+                .background(Color(0xFF042F2E)),
+            contentAlignment = Alignment.Center
         ) {
             Text(
                 text = "By : Guber Smart",
-                color = Color.White.copy(alpha = 0.5f),
+                color = Color.White.copy(alpha = 0.7f),
                 fontSize = 11.sp,
-                fontWeight = FontWeight.Medium
+                fontWeight = FontWeight.Medium,
+                letterSpacing = 0.5.sp
             )
         }
     }
 
-    // JavaScript Alert Dialog
-    jsAlertData?.let { (msg, res) ->
+    // JS Alert Dialog
+    jsAlertData?.let { (message, result) ->
         AlertDialog(
             onDismissRequest = {
-                res.confirm()
+                result.cancel()
                 jsAlertData = null
             },
-            title = { Text("Pemberitahuan") },
-            text = { Text(msg) },
+            title = { Text(text = "Pemberitahuan Situs", fontWeight = FontWeight.Bold) },
+            text = { Text(text = message) },
             confirmButton = {
                 TextButton(onClick = {
-                    res.confirm()
+                    result.confirm()
                     jsAlertData = null
                 }) {
                     Text("OK")
@@ -620,26 +670,26 @@ fun BrowserScreen(
         )
     }
 
-    // JavaScript Confirm Dialog
-    jsConfirmData?.let { (msg, res) ->
+    // JS Confirm Dialog
+    jsConfirmData?.let { (message, result) ->
         AlertDialog(
             onDismissRequest = {
-                res.cancel()
+                result.cancel()
                 jsConfirmData = null
             },
-            title = { Text("Konfirmasi") },
-            text = { Text(msg) },
+            title = { Text(text = "Konfirmasi Situs", fontWeight = FontWeight.Bold) },
+            text = { Text(text = message) },
             confirmButton = {
-                TextButton(onClick = {
-                    res.confirm()
+                Button(onClick = {
+                    result.confirm()
                     jsConfirmData = null
                 }) {
-                    Text("OK")
+                    Text("Ya")
                 }
             },
             dismissButton = {
-                TextButton(onClick = {
-                    res.cancel()
+                OutlinedButton(onClick = {
+                    result.cancel()
                     jsConfirmData = null
                 }) {
                     Text("Batal")
@@ -648,34 +698,38 @@ fun BrowserScreen(
         )
     }
 
-    // JavaScript Prompt Dialog
-    jsPromptData?.let { (msg, defVal, res) ->
-        var promptText by remember { mutableStateOf(defVal) }
+    // JS Prompt Dialog
+    jsPromptData?.let { (message, defaultValue, result) ->
+        var promptInput by remember { mutableStateOf(defaultValue) }
         AlertDialog(
             onDismissRequest = {
-                res.cancel()
+                result.cancel()
                 jsPromptData = null
             },
-            title = { Text(msg) },
+            title = { Text(text = "Masukan Situs", fontWeight = FontWeight.Bold) },
             text = {
-                OutlinedTextField(
-                    value = promptText,
-                    onValueChange = { promptText = it },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
+                Column {
+                    Text(text = message)
+                    Spacer(modifier = Modifier.height(8.dp))
+                    OutlinedTextField(
+                        value = promptInput,
+                        onValueChange = { promptInput = it },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
             },
             confirmButton = {
-                TextButton(onClick = {
-                    res.confirm(promptText)
+                Button(onClick = {
+                    result.confirm(promptInput)
                     jsPromptData = null
                 }) {
-                    Text("OK")
+                    Text("Kirim")
                 }
             },
             dismissButton = {
-                TextButton(onClick = {
-                    res.cancel()
+                OutlinedButton(onClick = {
+                    result.cancel()
                     jsPromptData = null
                 }) {
                     Text("Batal")
@@ -684,7 +738,7 @@ fun BrowserScreen(
         )
     }
 
-    // HTTP Auth Dialog (Username & Password)
+    // HTTP Auth Dialog
     httpAuthData?.let { (host, realm, handler) ->
         var username by remember { mutableStateOf("") }
         var password by remember { mutableStateOf("") }
@@ -694,10 +748,11 @@ fun BrowserScreen(
                 handler.cancel()
                 httpAuthData = null
             },
-            title = { Text("Autentikasi Diperlukan") },
+            title = { Text(text = "Autentikasi Diperlukan", fontWeight = FontWeight.Bold) },
             text = {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text(text = if (realm.isNotBlank()) "$host ($realm)" else host, fontSize = 13.sp)
+                Column {
+                    Text(text = "Host: $host\nRealm: $realm", style = MaterialTheme.typography.bodySmall)
+                    Spacer(modifier = Modifier.height(12.dp))
                     OutlinedTextField(
                         value = username,
                         onValueChange = { username = it },
@@ -705,27 +760,28 @@ fun BrowserScreen(
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth()
                     )
+                    Spacer(modifier = Modifier.height(8.dp))
                     OutlinedTextField(
                         value = password,
                         onValueChange = { password = it },
                         label = { Text("Kata Sandi") },
-                        singleLine = true,
                         visualTransformation = PasswordVisualTransformation(),
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                        singleLine = true,
                         modifier = Modifier.fillMaxWidth()
                     )
                 }
             },
             confirmButton = {
-                TextButton(onClick = {
+                Button(onClick = {
                     handler.proceed(username, password)
                     httpAuthData = null
                 }) {
-                    Text("Login")
+                    Text("Masuk")
                 }
             },
             dismissButton = {
-                TextButton(onClick = {
+                OutlinedButton(onClick = {
                     handler.cancel()
                     httpAuthData = null
                 }) {
@@ -735,64 +791,43 @@ fun BrowserScreen(
         )
     }
 
-    // SSL Certificate Error Dialog
-    sslErrorData?.let { (handler, _) ->
+    // SSL Error Dialog
+    sslErrorData?.let { (handler, error) ->
+        val sslMessage = when (error.primaryError) {
+            SslError.SSL_UNTRUSTED -> "Sertifikat keamanan situs tidak tepercaya."
+            SslError.SSL_EXPIRED -> "Sertifikat keamanan situs telah kedaluwarsa."
+            SslError.SSL_IDMISMATCH -> "Nama host tidak sesuai dengan sertifikat."
+            SslError.SSL_NOTYETVALID -> "Sertifikat keamanan belum valid."
+            else -> "Terjadi kesalahan sertifikat keamanan SSL (${error.primaryError})."
+        }
+
         AlertDialog(
             onDismissRequest = {
                 handler.cancel()
                 sslErrorData = null
             },
-            title = { Text("Peringatan Sertifikat Keamanan") },
-            text = { Text("Sertifikat keamanan situs ini tidak valid. Tetap melanjutkan berisiko terhadap privasi dan keamanan Anda.") },
+            title = { Text(text = "Peringatan Keamanan SSL", fontWeight = FontWeight.Bold) },
+            text = { Text(text = "$sslMessage\n\nApakah Anda yakin ingin tetap melanjutkan?") },
             confirmButton = {
                 Button(
                     onClick = {
-                        handler.cancel()
+                        handler.proceed()
                         sslErrorData = null
                     },
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.error
+                    )
                 ) {
-                    Text("Kembali")
+                    Text("Tetap Lanjutkan")
                 }
             },
             dismissButton = {
-                TextButton(onClick = {
-                    handler.proceed()
+                OutlinedButton(onClick = {
+                    handler.cancel()
                     sslErrorData = null
                 }) {
-                    Text("Lanjutkan", color = MaterialTheme.colorScheme.error)
+                    Text("Kembali")
                 }
-            }
-        )
-    }
-
-    // Dialog Buka Tab Baru dari daftar situs yang ada
-    if (showSelectTabDialog) {
-        SelectTabDialog(
-            allTombolList = allTombolList,
-            activeSessionIds = activeSessionIds,
-            currentTombolId = tombol.id,
-            onDismissRequest = { showSelectTabDialog = false },
-            onSelectTombol = { selectedId ->
-                showSelectTabDialog = false
-                onSwitchTab(selectedId)
-            },
-            onAddNewTombol = {
-                showSelectTabDialog = false
-                showFormDialog = true
-            }
-        )
-    }
-
-    // Dialog Tambah Situs Baru langsung dari Tab Bar
-    if (showFormDialog) {
-        FormTombolDialog(
-            initialTombol = null,
-            onDismissRequest = { showFormDialog = false },
-            onSaveTombol = { newTombol ->
-                showFormDialog = false
-                onSaveTombol(newTombol)
-                onSwitchTab(newTombol.id)
             }
         )
     }

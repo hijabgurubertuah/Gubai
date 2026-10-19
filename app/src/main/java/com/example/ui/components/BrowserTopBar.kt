@@ -9,7 +9,6 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -17,7 +16,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -29,17 +27,19 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ContentPaste
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.RotateLeft
 import androidx.compose.material.icons.filled.RotateRight
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -47,13 +47,16 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -61,12 +64,17 @@ import androidx.compose.ui.unit.sp
 
 @Composable
 fun BrowserTopBar(
+    canGoBack: Boolean = false,
+    canGoForward: Boolean = false,
+    isAddTabOpen: Boolean = false,
+    onToggleAddTab: () -> Unit = {},
     onUndo: () -> Unit,
     onRedo: () -> Unit,
     onReload: () -> Unit,
     onGoHome: () -> Unit,
     onGoToHomepage: () -> Unit,
     onOpenUrl: (String) -> Unit,
+    onAddNewTab: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -76,7 +84,16 @@ fun BrowserTopBar(
     var showPasteBar by remember { mutableStateOf(false) }
     var inputUrl by remember { mutableStateOf("") }
 
-    val handleOpenUrl: (String) -> Unit = { rawUrl ->
+    var newTabInput by remember { mutableStateOf("") }
+    val newTabFocusRequester = remember { FocusRequester() }
+
+    LaunchedEffect(isAddTabOpen) {
+        if (isAddTabOpen) {
+            newTabFocusRequester.requestFocus()
+        }
+    }
+
+    val handleOpenCurrentUrl: (String) -> Unit = { rawUrl ->
         var trimmed = rawUrl.trim()
         if (trimmed.isNotBlank()) {
             if (!trimmed.startsWith("http://", ignoreCase = true) &&
@@ -89,7 +106,7 @@ fun BrowserTopBar(
                 Toast.makeText(context, "Alamat web tidak valid", Toast.LENGTH_SHORT).show()
             } else {
                 focusManager.clearFocus()
-                showPasteBar = false // Sembunyikan otomatis setelah dijalankan
+                showPasteBar = false
                 inputUrl = ""
                 onOpenUrl(trimmed)
             }
@@ -98,66 +115,103 @@ fun BrowserTopBar(
         }
     }
 
+    val handleAddNewTabAction: () -> Unit = {
+        val trimmed = newTabInput.trim()
+        if (trimmed.isNotBlank()) {
+            focusManager.clearFocus()
+            onToggleAddTab()
+            newTabInput = ""
+            onAddNewTab(trimmed)
+        } else {
+            Toast.makeText(context, "Ketik pencarian atau alamat web", Toast.LENGTH_SHORT).show()
+        }
+    }
+
     Column(
         modifier = modifier
             .fillMaxWidth()
             .background(Color(0xFF042F2E))
     ) {
-        // 1 Bar Berisi Tombol-Tombol di Bagian Atas
+        // 1 Bar Berisi Tombol-Tombol Navigasi & Aksi
         Row(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceEvenly,
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 8.dp, vertical = 8.dp)
+                .padding(horizontal = 4.dp, vertical = 6.dp)
         ) {
-            // Undo (ikon panah melengkung)
+            // Undo (Aktif/Redup sesuai canGoBack pada tab aktif)
             TopBarIconButton(
                 icon = Icons.Default.RotateLeft,
                 contentDescription = "Undo",
                 testTag = "action_undo",
+                enabled = canGoBack,
                 onClick = onUndo
             )
 
-            // Redo (ikon panah melengkung)
+            // Redo (Aktif/Redup sesuai canGoForward pada tab aktif)
             TopBarIconButton(
                 icon = Icons.Default.RotateRight,
                 contentDescription = "Redo",
                 testTag = "action_redo",
+                enabled = canGoForward,
                 onClick = onRedo
             )
 
-            // Kembali ke Beranda (ikon saja)
+            // Kembali ke Beranda (kisi tombol) - tetap hidup di background
             TopBarIconButton(
                 icon = Icons.AutoMirrored.Filled.ArrowBack,
-                contentDescription = "Kembali",
+                contentDescription = "Kembali ke Beranda",
                 testTag = "action_kembali",
+                enabled = true,
                 onClick = onGoHome
             )
 
-            // Homepage / Alamat Web Tombol (ikon rumah saja)
+            // Homepage (hanya pada tab aktif)
             TopBarIconButton(
                 icon = Icons.Default.Home,
                 contentDescription = "Homepage",
                 testTag = "action_homepage",
+                enabled = true,
                 onClick = onGoToHomepage
             )
 
-            // Muat Ulang (ikon refresh saja)
+            // Muat Ulang (hanya pada tab aktif)
             TopBarIconButton(
                 icon = Icons.Default.Refresh,
                 contentDescription = "Muat Ulang",
                 testTag = "action_muat_ulang",
+                enabled = true,
                 onClick = onReload
             )
 
-            // Tombol Link (bila ditekan memunculkan kolom paste link di bawahnya)
+            // Tambah Tab Baru (+)
+            TopBarIconButton(
+                icon = Icons.Default.Add,
+                contentDescription = "Tambah Tab",
+                testTag = "action_tambah_tab",
+                enabled = true,
+                tint = if (isAddTabOpen) Color.White else Color(0xFF00FF66),
+                onClick = {
+                    if (!isAddTabOpen && showPasteBar) {
+                        showPasteBar = false
+                    }
+                    onToggleAddTab()
+                }
+            )
+
+            // Tombol Link (hanya pada tab aktif)
             TopBarIconButton(
                 icon = Icons.Default.Link,
                 contentDescription = "Link",
                 testTag = "action_toggle_link",
+                enabled = true,
+                tint = if (showPasteBar) Color(0xFF00FF66) else Color.White,
                 onClick = {
                     showPasteBar = !showPasteBar
+                    if (showPasteBar && isAddTabOpen) {
+                        onToggleAddTab()
+                    }
                     if (!showPasteBar) {
                         focusManager.clearFocus()
                     }
@@ -165,7 +219,141 @@ fun BrowserTopBar(
             )
         }
 
-        // Kolom paste link yang muncul di bawahnya jika tombol link ditekan
+        // 2. Bar Input Tambah Tab Baru yang muncul saat tombol + ditekan
+        AnimatedVisibility(
+            visible = isAddTabOpen,
+            enter = fadeIn() + slideInVertically(initialOffsetY = { -it }),
+            exit = fadeOut() + slideOutVertically(targetOffsetY = { -it }),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(Color(0xFF02201F))
+                    .padding(horizontal = 10.dp, vertical = 8.dp)
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(Color(0xFF042F2E))
+                        .padding(horizontal = 8.dp, vertical = 6.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Search,
+                        contentDescription = "Cari",
+                        tint = Color(0xFF2DD4BF),
+                        modifier = Modifier.size(18.dp)
+                    )
+
+                    Spacer(modifier = Modifier.width(6.dp))
+
+                    BasicTextField(
+                        value = newTabInput,
+                        onValueChange = { newTabInput = it },
+                        singleLine = true,
+                        cursorBrush = SolidColor(Color(0xFF00FF66)),
+                        textStyle = androidx.compose.ui.text.TextStyle(
+                            color = Color.White,
+                            fontSize = 13.sp
+                        ),
+                        keyboardOptions = KeyboardOptions(
+                            keyboardType = KeyboardType.Text,
+                            imeAction = ImeAction.Search
+                        ),
+                        keyboardActions = KeyboardActions(onSearch = { handleAddNewTabAction() }),
+                        modifier = Modifier
+                            .weight(1f)
+                            .focusRequester(newTabFocusRequester)
+                            .testTag("input_tab_baru"),
+                        decorationBox = { innerTextField ->
+                            if (newTabInput.isEmpty()) {
+                                Text(
+                                    text = "Cari di Google atau ketik alamat web",
+                                    color = Color.White.copy(alpha = 0.5f),
+                                    fontSize = 13.sp
+                                )
+                            }
+                            innerTextField()
+                        }
+                    )
+
+                    Spacer(modifier = Modifier.width(6.dp))
+
+                    // Tombol Paste
+                    Box(
+                        contentAlignment = Alignment.Center,
+                        modifier = Modifier
+                            .size(30.dp)
+                            .clip(CircleShape)
+                            .background(Color(0xFF0F766E))
+                            .clickable {
+                                val clipText = clipboardManager.getText()?.text
+                                if (!clipText.isNullOrBlank()) {
+                                    newTabInput = clipText
+                                } else {
+                                    Toast.makeText(context, "Papan klip kosong", Toast.LENGTH_SHORT).show()
+                                }
+                            }
+                            .testTag("btn_paste_tab_baru")
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.ContentPaste,
+                            contentDescription = "Paste",
+                            tint = Color.White,
+                            modifier = Modifier.size(15.dp)
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.width(6.dp))
+
+                    // Tombol Cari / Buka Tab
+                    Box(
+                        contentAlignment = Alignment.Center,
+                        modifier = Modifier
+                            .size(30.dp)
+                            .clip(CircleShape)
+                            .background(Color(0xFF00FF66))
+                            .clickable { handleAddNewTabAction() }
+                            .testTag("btn_buka_tab_baru")
+                    ) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                            contentDescription = "Buka Tab",
+                            tint = Color(0xFF042F2E),
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.width(6.dp))
+
+                    // Tombol Batal
+                    Box(
+                        contentAlignment = Alignment.Center,
+                        modifier = Modifier
+                            .size(30.dp)
+                            .clip(CircleShape)
+                            .background(Color.White.copy(alpha = 0.12f))
+                            .clickable {
+                                focusManager.clearFocus()
+                                onToggleAddTab()
+                                newTabInput = ""
+                            }
+                            .testTag("btn_batal_tab_baru")
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Close,
+                            contentDescription = "Batal",
+                            tint = Color.White.copy(alpha = 0.8f),
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
+                }
+            }
+        }
+
+        // 3. Kolom Paste Link Biasa (pada tab aktif sekarang)
         AnimatedVisibility(
             visible = showPasteBar,
             enter = fadeIn() + slideInVertically(initialOffsetY = { -it }),
@@ -191,11 +379,15 @@ fun BrowserTopBar(
                         onValueChange = { inputUrl = it },
                         singleLine = true,
                         cursorBrush = SolidColor(Color.White),
+                        textStyle = androidx.compose.ui.text.TextStyle(
+                            color = Color.White,
+                            fontSize = 13.sp
+                        ),
                         keyboardOptions = KeyboardOptions(
                             keyboardType = KeyboardType.Uri,
                             imeAction = ImeAction.Go
                         ),
-                        keyboardActions = KeyboardActions(onGo = { handleOpenUrl(inputUrl) }),
+                        keyboardActions = KeyboardActions(onGo = { handleOpenCurrentUrl(inputUrl) }),
                         modifier = Modifier
                             .weight(1f)
                             .padding(horizontal = 4.dp)
@@ -218,7 +410,7 @@ fun BrowserTopBar(
                     Box(
                         contentAlignment = Alignment.Center,
                         modifier = Modifier
-                            .size(32.dp)
+                            .size(30.dp)
                             .clip(CircleShape)
                             .background(Color(0xFF0F766E))
                             .clickable {
@@ -235,7 +427,7 @@ fun BrowserTopBar(
                             imageVector = Icons.Default.ContentPaste,
                             contentDescription = "Paste",
                             tint = Color.White,
-                            modifier = Modifier.size(16.dp)
+                            modifier = Modifier.size(15.dp)
                         )
                     }
 
@@ -245,17 +437,17 @@ fun BrowserTopBar(
                     Box(
                         contentAlignment = Alignment.Center,
                         modifier = Modifier
-                            .size(32.dp)
+                            .size(30.dp)
                             .clip(CircleShape)
                             .background(Color(0xFF14B8A6))
-                            .clickable { handleOpenUrl(inputUrl) }
+                            .clickable { handleOpenCurrentUrl(inputUrl) }
                             .testTag("btn_jalankan_link")
                     ) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowForward,
                             contentDescription = "Jalankan",
                             tint = Color.White,
-                            modifier = Modifier.size(16.dp)
+                            modifier = Modifier.size(15.dp)
                         )
                     }
                 }
@@ -266,24 +458,30 @@ fun BrowserTopBar(
 
 @Composable
 private fun TopBarIconButton(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    icon: ImageVector,
     contentDescription: String,
     testTag: String,
+    enabled: Boolean = true,
+    tint: Color = Color.White,
     onClick: () -> Unit
 ) {
+    val effectiveTint = if (enabled) tint else Color.White.copy(alpha = 0.28f)
     Box(
         contentAlignment = Alignment.Center,
         modifier = Modifier
-            .size(36.dp)
+            .size(34.dp)
             .clip(CircleShape)
-            .clickable(onClick = onClick)
+            .then(
+                if (enabled) Modifier.clickable(onClick = onClick)
+                else Modifier
+            )
             .testTag(testTag)
     ) {
         Icon(
             imageVector = icon,
             contentDescription = contentDescription,
-            tint = Color.White,
-            modifier = Modifier.size(20.dp)
+            tint = effectiveTint,
+            modifier = Modifier.size(19.dp)
         )
     }
 }

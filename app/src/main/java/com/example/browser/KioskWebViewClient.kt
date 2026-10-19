@@ -6,7 +6,9 @@ import android.graphics.Bitmap
 import android.net.Uri
 import android.net.http.SslError
 import android.util.Log
+import android.view.ViewGroup
 import android.webkit.HttpAuthHandler
+import android.webkit.RenderProcessGoneDetail
 import android.webkit.SslErrorHandler
 import android.webkit.WebResourceError
 import android.webkit.WebResourceRequest
@@ -20,7 +22,8 @@ class KioskWebViewClient(
     private val onPageFinishedCallback: (String) -> Unit,
     private val onErrorCallback: (String) -> Unit,
     private val onHttpAuthRequest: (host: String, realm: String, handler: HttpAuthHandler) -> Unit,
-    private val onSslErrorRequest: (handler: SslErrorHandler, error: SslError) -> Unit
+    private val onSslErrorRequest: (handler: SslErrorHandler, error: SslError) -> Unit,
+    private val onRenderProcessGoneCallback: () -> Unit = {}
 ) : WebViewClient() {
 
     override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
@@ -107,5 +110,22 @@ class KioskWebViewClient(
         } else {
             handler?.cancel()
         }
+    }
+
+    override fun onRenderProcessGone(view: WebView?, detail: RenderProcessGoneDetail?): Boolean {
+        val didCrash = detail?.didCrash() ?: false
+        Log.e("KioskWebViewClient", "Renderer process gone detected! didCrash=$didCrash")
+        if (view != null) {
+            (view.parent as? ViewGroup)?.removeView(view)
+            try {
+                view.destroy()
+            } catch (e: Exception) {
+                // ignore
+            }
+        }
+        onRenderProcessGoneCallback()
+        onErrorCallback("Proses halaman peramban terhenti sementara. Ketuk 'Coba Lagi' untuk memuat ulang.")
+        // Returning true informs Android OS that the app handled the crash and should NOT be killed.
+        return true
     }
 }
