@@ -143,6 +143,25 @@ fun GubAIApp(viewModel: GubAIViewModel) {
             if (currentTombol != null) {
                 BrowserScreen(
                     tombol = currentTombol,
+                    allTombolList = tombolList,
+                    activeSessionIds = activeSessionIds,
+                    onSwitchTab = { newTombolId ->
+                        viewModel.openBrowser(newTombolId)
+                    },
+                    onCloseTab = { tombolIdToClose ->
+                        val remainingActive = activeSessionIds.filter { it != tombolIdToClose }
+                        viewModel.closeSession(tombolIdToClose)
+                        if (tombolIdToClose == currentTombol.id) {
+                            if (remainingActive.isNotEmpty()) {
+                                viewModel.openBrowser(remainingActive.first())
+                            } else {
+                                viewModel.navigateToHome()
+                            }
+                        }
+                    },
+                    onSaveTombol = { newTombol ->
+                        viewModel.saveTombol(newTombol)
+                    },
                     onBackToHome = {
                         viewModel.navigateToHome()
                     },

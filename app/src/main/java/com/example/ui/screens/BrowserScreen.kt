@@ -81,12 +81,20 @@ import com.example.browser.KioskWebChromeClient
 import com.example.browser.KioskWebViewClient
 import com.example.browser.WebViewSessionManager
 import com.example.data.model.Tombol
+import com.example.ui.components.BrowserTabBar
 import com.example.ui.components.BrowserTopBar
+import com.example.ui.components.FormTombolDialog
+import com.example.ui.components.SelectTabDialog
 
 @SuppressLint("SetJavaScriptEnabled")
 @Composable
 fun BrowserScreen(
     tombol: Tombol,
+    allTombolList: List<Tombol> = emptyList(),
+    activeSessionIds: Set<String> = emptySet(),
+    onSwitchTab: (String) -> Unit = {},
+    onCloseTab: (String) -> Unit = {},
+    onSaveTombol: (Tombol) -> Unit = {},
     onBackToHome: () -> Unit,
     onUpdateLastUrl: (String) -> Unit,
     modifier: Modifier = Modifier
@@ -96,6 +104,18 @@ fun BrowserScreen(
     // Retrieve or create persistent background session
     val session = remember(tombol.id) {
         WebViewSessionManager.getOrCreateSession(context, tombol)
+    }
+
+    var showSelectTabDialog by remember { mutableStateOf(false) }
+    var showFormDialog by remember { mutableStateOf(false) }
+
+    // List of active tabs to display in the tab bar
+    val activeTabs = remember(allTombolList, activeSessionIds, tombol) {
+        val list = allTombolList.filter { activeSessionIds.contains(it.id) }.toMutableList()
+        if (list.none { it.id == tombol.id }) {
+            list.add(0, tombol)
+        }
+        list
     }
 
     var currentProgress by remember { mutableIntStateOf(0) }
@@ -361,7 +381,24 @@ fun BrowserScreen(
             }
         )
 
-        // 2. Area WebView di tengah (diapit oleh top bar dan bottom empty bar)
+        // 2. Bar Tab yang menampilkan tab-tab yang sedang aktif berjalan
+        BrowserTabBar(
+            activeTabs = activeTabs,
+            currentTombolId = tombol.id,
+            onSelectTab = { selectedId ->
+                if (selectedId != tombol.id) {
+                    onSwitchTab(selectedId)
+                }
+            },
+            onCloseTab = { closeId ->
+                onCloseTab(closeId)
+            },
+            onAddNewTab = {
+                showSelectTabDialog = true
+            }
+        )
+
+        // 3. Area WebView di tengah (diapit oleh top bar dan bottom empty bar)
         Box(
             modifier = Modifier
                 .weight(1f)
@@ -725,6 +762,37 @@ fun BrowserScreen(
                 }) {
                     Text("Lanjutkan", color = MaterialTheme.colorScheme.error)
                 }
+            }
+        )
+    }
+
+    // Dialog Buka Tab Baru dari daftar situs yang ada
+    if (showSelectTabDialog) {
+        SelectTabDialog(
+            allTombolList = allTombolList,
+            activeSessionIds = activeSessionIds,
+            currentTombolId = tombol.id,
+            onDismissRequest = { showSelectTabDialog = false },
+            onSelectTombol = { selectedId ->
+                showSelectTabDialog = false
+                onSwitchTab(selectedId)
+            },
+            onAddNewTombol = {
+                showSelectTabDialog = false
+                showFormDialog = true
+            }
+        )
+    }
+
+    // Dialog Tambah Situs Baru langsung dari Tab Bar
+    if (showFormDialog) {
+        FormTombolDialog(
+            initialTombol = null,
+            onDismissRequest = { showFormDialog = false },
+            onSaveTombol = { newTombol ->
+                showFormDialog = false
+                onSaveTombol(newTombol)
+                onSwitchTab(newTombol.id)
             }
         )
     }
