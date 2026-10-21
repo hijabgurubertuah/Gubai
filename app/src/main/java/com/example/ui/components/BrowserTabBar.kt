@@ -32,11 +32,14 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.data.model.TabEntity
+import com.example.ui.theme.BrowserThemeColors
+import com.example.ui.theme.calculateBrowserThemeColors
 
 @Composable
 fun BrowserTabBar(
     tabs: List<TabEntity>,
     activeTabId: String,
+    browserColors: BrowserThemeColors = calculateBrowserThemeColors("#14B8A6"),
     onSelectTab: (String) -> Unit,
     onCloseTab: (String) -> Unit,
     onAddNewTabClick: () -> Unit,
@@ -49,7 +52,7 @@ fun BrowserTabBar(
         modifier = modifier
             .fillMaxWidth()
             .height(38.dp)
-            .background(Color(0xFF021C1B))
+            .background(browserColors.tabBarBackground)
             .padding(horizontal = 6.dp)
             .horizontalScroll(scrollState)
             .testTag("browser_tab_bar")
@@ -58,8 +61,8 @@ fun BrowserTabBar(
         tabs.forEach { tab ->
             val isSelected = tab.tabId == activeTabId
 
-            val tabBg = if (isSelected) Color(0xFF0F766E) else Color(0xFF032827)
-            val tabTextColor = if (isSelected) Color.White else Color(0xFF99F6E4).copy(alpha = 0.7f)
+            val tabBg = if (isSelected) browserColors.tabSelectedBackground else browserColors.tabUnselectedBackground
+            val tabTextColor = if (isSelected) browserColors.tabSelectedText else browserColors.tabUnselectedText
 
             Box(
                 modifier = Modifier
@@ -78,7 +81,7 @@ fun BrowserTabBar(
                     Icon(
                         imageVector = Icons.Default.Language,
                         contentDescription = null,
-                        tint = if (isSelected) Color(0xFF00FF66) else Color(0xFF2DD4BF),
+                        tint = if (isSelected) browserColors.accent else browserColors.accent.copy(alpha = 0.7f),
                         modifier = Modifier.size(13.dp)
                     )
 
@@ -111,20 +114,20 @@ fun BrowserTabBar(
                         Icon(
                             imageVector = Icons.Default.Close,
                             contentDescription = "Tutup Tab $displayTitle",
-                            tint = if (isSelected) Color.White else Color(0xFF99F6E4).copy(alpha = 0.6f),
+                            tint = if (isSelected) Color.White else browserColors.tabUnselectedText,
                             modifier = Modifier.size(11.dp)
                         )
                     }
                 }
 
-                // Indikator garis bawah hijau stabilo jika tab sedang aktif
+                // Indikator garis bawah warna aksen tombol jika tab sedang aktif
                 if (isSelected) {
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(2.5.dp)
                             .align(Alignment.BottomCenter)
-                            .background(Color(0xFF00FF66))
+                            .background(browserColors.accent)
                     )
                 }
             }
@@ -136,14 +139,14 @@ fun BrowserTabBar(
             modifier = Modifier
                 .size(28.dp)
                 .clip(CircleShape)
-                .background(Color(0xFF042F2E))
+                .background(browserColors.topBarBackground)
                 .clickable(onClick = onAddNewTabClick)
                 .testTag("btn_tab_bar_add")
         ) {
             Icon(
                 imageVector = Icons.Default.Add,
                 contentDescription = "Tambah Tab",
-                tint = Color(0xFF00FF66),
+                tint = browserColors.accent,
                 modifier = Modifier.size(16.dp)
             )
         }

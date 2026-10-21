@@ -86,6 +86,7 @@ import com.example.data.model.TabEntity
 import com.example.data.model.Tombol
 import com.example.ui.components.BrowserTabBar
 import com.example.ui.components.BrowserTopBar
+import com.example.ui.theme.rememberBrowserThemeColors
 
 @SuppressLint("SetJavaScriptEnabled")
 @Composable
@@ -101,6 +102,7 @@ fun BrowserScreen(
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
+    val browserColors = rememberBrowserThemeColors(tombol.warna)
     var sessionVersion by remember { mutableIntStateOf(0) }
 
     // Active tab in this browser
@@ -113,10 +115,10 @@ fun BrowserScreen(
         Box(
             modifier = modifier
                 .fillMaxSize()
-                .background(Color(0xFF042F2E)),
+                .background(browserColors.topBarBackground),
             contentAlignment = Alignment.Center
         ) {
-            CircularProgressIndicator(color = Color(0xFF00FF66))
+            CircularProgressIndicator(color = browserColors.accent)
         }
         return
     }
@@ -394,10 +396,11 @@ fun BrowserScreen(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .background(Color(0xFF042F2E))
+            .background(browserColors.topBarBackground)
     ) {
         // 1. BrowserTopBar di bagian paling atas (hanya beroperasi pada tab aktif)
         BrowserTopBar(
+            browserColors = browserColors,
             canGoBack = canGoBack,
             canGoForward = canGoForward,
             isAddTabOpen = isAddTabOpen,
@@ -450,6 +453,7 @@ fun BrowserScreen(
         BrowserTabBar(
             tabs = tabs,
             activeTabId = activeTab.tabId,
+            browserColors = browserColors,
             onSelectTab = { selectedId ->
                 if (selectedId != activeTab.tabId) {
                     onSelectTab(selectedId)
@@ -520,7 +524,7 @@ fun BrowserScreen(
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .background(Color(0xFF042F2E))
+                                    .background(browserColors.topBarBackground)
                                     .padding(horizontal = 8.dp, vertical = 4.dp),
                                 horizontalArrangement = Arrangement.End,
                                 verticalAlignment = Alignment.CenterVertically
@@ -556,7 +560,7 @@ fun BrowserScreen(
                         .fillMaxWidth()
                         .height(3.dp)
                         .align(Alignment.TopCenter),
-                    color = Color(0xFF00FF66),
+                    color = browserColors.accent,
                     trackColor = Color.Transparent
                 )
             }
@@ -637,7 +641,7 @@ fun BrowserScreen(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(44.dp)
-                .background(Color(0xFF042F2E)),
+                .background(browserColors.bottomBarBackground),
             contentAlignment = Alignment.Center
         ) {
             Text(

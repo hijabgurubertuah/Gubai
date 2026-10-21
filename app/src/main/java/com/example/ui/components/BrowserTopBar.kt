@@ -61,9 +61,12 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.ui.theme.BrowserThemeColors
+import com.example.ui.theme.calculateBrowserThemeColors
 
 @Composable
 fun BrowserTopBar(
+    browserColors: BrowserThemeColors = calculateBrowserThemeColors("#14B8A6"),
     canGoBack: Boolean = false,
     canGoForward: Boolean = false,
     isAddTabOpen: Boolean = false,
@@ -130,7 +133,7 @@ fun BrowserTopBar(
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .background(Color(0xFF042F2E))
+            .background(browserColors.topBarBackground)
     ) {
         // 1 Bar Berisi Tombol-Tombol Navigasi & Aksi
         Row(
@@ -191,7 +194,7 @@ fun BrowserTopBar(
                 contentDescription = "Tambah Tab",
                 testTag = "action_tambah_tab",
                 enabled = true,
-                tint = if (isAddTabOpen) Color.White else Color(0xFF00FF66),
+                tint = if (isAddTabOpen) Color.White else browserColors.accent,
                 onClick = {
                     if (!isAddTabOpen && showPasteBar) {
                         showPasteBar = false
@@ -206,7 +209,7 @@ fun BrowserTopBar(
                 contentDescription = "Link",
                 testTag = "action_toggle_link",
                 enabled = true,
-                tint = if (showPasteBar) Color(0xFF00FF66) else Color.White,
+                tint = if (showPasteBar) browserColors.accent else Color.White,
                 onClick = {
                     showPasteBar = !showPasteBar
                     if (showPasteBar && isAddTabOpen) {
@@ -229,7 +232,7 @@ fun BrowserTopBar(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(Color(0xFF02201F))
+                    .background(browserColors.subBarBackground)
                     .padding(horizontal = 10.dp, vertical = 8.dp)
             ) {
                 Row(
@@ -237,13 +240,13 @@ fun BrowserTopBar(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(10.dp))
-                        .background(Color(0xFF042F2E))
+                        .background(browserColors.topBarBackground)
                         .padding(horizontal = 8.dp, vertical = 6.dp)
                 ) {
                     Icon(
                         imageVector = Icons.Default.Search,
                         contentDescription = "Cari",
-                        tint = Color(0xFF2DD4BF),
+                        tint = browserColors.accent,
                         modifier = Modifier.size(18.dp)
                     )
 
@@ -253,7 +256,7 @@ fun BrowserTopBar(
                         value = newTabInput,
                         onValueChange = { newTabInput = it },
                         singleLine = true,
-                        cursorBrush = SolidColor(Color(0xFF00FF66)),
+                        cursorBrush = SolidColor(browserColors.accent),
                         textStyle = androidx.compose.ui.text.TextStyle(
                             color = Color.White,
                             fontSize = 13.sp
@@ -287,7 +290,7 @@ fun BrowserTopBar(
                         modifier = Modifier
                             .size(30.dp)
                             .clip(CircleShape)
-                            .background(Color(0xFF0F766E))
+                            .background(browserColors.primary)
                             .clickable {
                                 val clipText = clipboardManager.getText()?.text
                                 if (!clipText.isNullOrBlank()) {
@@ -314,14 +317,14 @@ fun BrowserTopBar(
                         modifier = Modifier
                             .size(30.dp)
                             .clip(CircleShape)
-                            .background(Color(0xFF00FF66))
+                            .background(browserColors.accent)
                             .clickable { handleAddNewTabAction() }
                             .testTag("btn_buka_tab_baru")
                     ) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowForward,
                             contentDescription = "Buka Tab",
-                            tint = Color(0xFF042F2E),
+                            tint = browserColors.topBarBackground,
                             modifier = Modifier.size(16.dp)
                         )
                     }
@@ -363,7 +366,7 @@ fun BrowserTopBar(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(Color(0xFF032221))
+                    .background(browserColors.subBarBackground)
                     .padding(horizontal = 12.dp, vertical = 8.dp)
             ) {
                 Row(
@@ -371,7 +374,7 @@ fun BrowserTopBar(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(8.dp))
-                        .background(Color(0xFF042F2E))
+                        .background(browserColors.topBarBackground)
                         .padding(horizontal = 8.dp, vertical = 6.dp)
                 ) {
                     BasicTextField(
@@ -412,7 +415,7 @@ fun BrowserTopBar(
                         modifier = Modifier
                             .size(30.dp)
                             .clip(CircleShape)
-                            .background(Color(0xFF0F766E))
+                            .background(browserColors.primary)
                             .clickable {
                                 val clipText = clipboardManager.getText()?.text
                                 if (!clipText.isNullOrBlank()) {
@@ -439,14 +442,14 @@ fun BrowserTopBar(
                         modifier = Modifier
                             .size(30.dp)
                             .clip(CircleShape)
-                            .background(Color(0xFF14B8A6))
+                            .background(browserColors.accent)
                             .clickable { handleOpenCurrentUrl(inputUrl) }
                             .testTag("btn_jalankan_link")
                     ) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowForward,
                             contentDescription = "Jalankan",
-                            tint = Color.White,
+                            tint = browserColors.topBarBackground,
                             modifier = Modifier.size(15.dp)
                         )
                     }
