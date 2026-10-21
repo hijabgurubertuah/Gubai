@@ -262,10 +262,14 @@ fun BrowserTopBar(
                             fontSize = 13.sp
                         ),
                         keyboardOptions = KeyboardOptions(
-                            keyboardType = KeyboardType.Text,
-                            imeAction = ImeAction.Search
+                            autoCorrect = false,
+                            keyboardType = KeyboardType.Uri,
+                            imeAction = ImeAction.Go
                         ),
-                        keyboardActions = KeyboardActions(onSearch = { handleAddNewTabAction() }),
+                        keyboardActions = KeyboardActions(
+                            onGo = { handleAddNewTabAction() },
+                            onSearch = { handleAddNewTabAction() }
+                        ),
                         modifier = Modifier
                             .weight(1f)
                             .focusRequester(newTabFocusRequester)
